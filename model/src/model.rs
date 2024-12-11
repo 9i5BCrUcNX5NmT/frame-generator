@@ -9,8 +9,8 @@ use burn::{
 
 #[derive(Module, Debug)]
 pub struct Model<B: Backend> {
-    conv11: Conv2d<B>,
-    activation11: Relu,
+    // conv11: Conv2d<B>,
+    // activation11: Relu,
 
     // conv12: Conv2d<B>,
     // activation12: Relu,
@@ -56,8 +56,8 @@ impl ModelConfig {
     /// Returns the initialized model.
     pub fn init<B: Backend>(&self, device: &B::Device) -> Model<B> {
         Model {
-            conv11: Conv2dConfig::new([16, 3], [3, 3]).init(device),
-            activation11: Relu,
+            // conv11: Conv2dConfig::new([16, 3], [3, 3]).init(device),
+            // activation11: Relu,
             // conv12: Conv2dConfig::new([32, 16], [3, 3]).init(device),
             // activation12: Relu,
             // conv13: Conv2dConfig::new([64, 32], [3, 3]).init(device),
@@ -86,14 +86,14 @@ impl<B: Backend> Model<B> {
     /// # Shapes
     ///   - Images [batch_size, height, width]
     ///   - Output [batch_size, num_classes]
-    pub fn forward(&self, images: Tensor<B, 3>, inputs: Tensor<B, 3>) -> Tensor<B, 3> {
-        let [batch_size, height, width] = images.dims();
+    pub fn forward(&self, inputs: Tensor<B, 3>) -> Tensor<B, 3> {
+        let [batch_size, height, width] = inputs.dims();
 
-        // Create a channel at the second dimension.
-        let x = images.reshape([batch_size, 1, height, width]);
+        // // Create a channel at the second dimension.
+        // let x = images.reshape([batch_size, 1, height, width]);
 
-        let x = self.conv11.forward(x);
-        let x = self.activation11.forward(x);
+        // let x = self.conv11.forward(x);
+        // let x = self.activation11.forward(x);
 
         let y = inputs.reshape([batch_size, 1, height, width]);
 
@@ -101,12 +101,12 @@ impl<B: Backend> Model<B> {
         let y = self.dropout.forward(y);
         let y = self.activation21.forward(y);
 
-        let z = x + y;
+        // let z = x + y;
 
-        let z = self.conv31.forward(z);
-        let z = self.activation31.forward(z);
+        // let z = self.conv31.forward(z);
+        // let z = self.activation31.forward(z);
 
-        let r = z.reshape([batch_size, height, width]);
+        let r = y.reshape([batch_size, height, width]);
 
         r
     }
