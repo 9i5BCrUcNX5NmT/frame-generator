@@ -84,10 +84,10 @@ impl ModelConfig {
 
 impl<B: Backend> Model<B> {
     /// # Shapes
-    ///   - Images [batch_size, height, width]
-    ///   - Output [batch_size, num_classes]
-    pub fn forward(&self, inputs: Tensor<B, 3>) -> Tensor<B, 3> {
-        let [batch_size, height, width] = inputs.dims();
+    ///   - Images [batch_size, color, height, width]
+    ///   - Output [batch_size, color, height, width]
+    pub fn forward(&self, inputs: Tensor<B, 4>) -> Tensor<B, 4> {
+        // let [batch_size, colors, height, width] = inputs.dims();
 
         // // Create a channel at the second dimension.
         // let x = images.reshape([batch_size, 1, height, width]);
@@ -95,9 +95,9 @@ impl<B: Backend> Model<B> {
         // let x = self.conv11.forward(x);
         // let x = self.activation11.forward(x);
 
-        let y = inputs.reshape([batch_size, 1, height, width]);
+        // let y = inputs.reshape([batch_size, colors, height, width]);
 
-        let y = self.conv21.forward(y);
+        let y = self.conv21.forward(inputs);
         let y = self.dropout.forward(y);
         let y = self.activation21.forward(y);
 
@@ -106,8 +106,8 @@ impl<B: Backend> Model<B> {
         // let z = self.conv31.forward(z);
         // let z = self.activation31.forward(z);
 
-        let r = y.reshape([batch_size, height, width]);
+        // let r = y.reshape([batch_size, colors, height, width]);
 
-        r
+        y
     }
 }
