@@ -3,11 +3,10 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use image::{DynamicImage, GenericImageView, Rgba};
+use image::{DynamicImage, GenericImageView};
 
 pub struct ImageData {
     image_path: PathBuf,
-    label: String,
 }
 
 pub fn load_images_from_directory(dir: &str) -> io::Result<Vec<ImageData>> {
@@ -19,11 +18,7 @@ pub fn load_images_from_directory(dir: &str) -> io::Result<Vec<ImageData>> {
 
         if path.is_file() {
             // Здесь вы можете определить, как извлекать метки из имени файла или структуры директорий
-            let label = path.file_stem().unwrap().to_string_lossy().to_string();
-            dataset.push(ImageData {
-                image_path: path,
-                label,
-            });
+            dataset.push(ImageData { image_path: path });
         }
     }
 

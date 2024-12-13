@@ -13,6 +13,7 @@ use model::ModelConfig;
 mod data;
 mod images;
 mod model;
+mod training;
 
 use serde::Deserialize;
 
