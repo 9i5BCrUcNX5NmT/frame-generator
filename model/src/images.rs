@@ -3,7 +3,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use image::DynamicImage;
+use image::{DynamicImage, GenericImageView, Rgba};
 
 pub struct ImageData {
     image_path: PathBuf,
@@ -65,10 +65,25 @@ pub fn process_images(
     Ok(())
 }
 
-pub fn create_dataset(dataset: Vec<ImageData>) {
-    for data in dataset {
-        let image = load_image(&data);
+pub struct ImagePixelData {
+    pub pixels: [[[u8; 4]; 200]; 200],
+}
 
-        println!("{:?}, {:?}", image.height(), image.width());
-    }
+pub fn convert_images_to_image_pixel_data(images: Vec<ImageData>) -> Vec<ImagePixelData> {
+    let images_pixels: Vec<ImagePixelData> = images
+        .iter()
+        .map(|image_data| load_image(image_data))
+        .map(|image| {
+            let mut pixels: [[[u8; 4]; 200]; 200] = [[[0; 4]; 200]; 200];
+
+            for pixel in image.pixels() {
+                pixels[pixel.0 as usize][pixel.1 as usize] = pixel.2 .0;
+            }
+
+            pixels
+        })
+        .map(|pixels| ImagePixelData { pixels })
+        .collect();
+
+    images_pixels
 }
