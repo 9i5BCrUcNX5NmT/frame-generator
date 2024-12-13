@@ -1,7 +1,7 @@
-use burn::{
-    data::{dataloader::batcher::Batcher, dataset::vision::MnistItem},
-    prelude::*,
-};
+use burn::{data::dataloader::batcher::Batcher, prelude::*};
+use image::{DynamicImage, GenericImageView};
+
+use crate::images::ImagePixelData;
 
 #[derive(Clone)]
 pub struct FrameBatcher<B: Backend> {
@@ -16,34 +16,35 @@ impl<B: Backend> FrameBatcher<B> {
 
 #[derive(Clone, Debug)]
 pub struct FrameBatch<B: Backend> {
-    images: Tensor<B, 3>,
-    targets: Tensor<B, 3>,
+    images: Tensor<B, 4>,
+    targets: Tensor<B, 4>,
 }
 
-impl<B: Backend> Batcher<MnistItem, FrameBatch<B>> for FrameBatcher<B> {
-    fn batch(&self, items: Vec<MnistItem>) -> FrameBatch<B> {
-        let images = items
+impl<B: Backend> Batcher<ImagePixelData, FrameBatch<B>> for FrameBatcher<B> {
+    fn batch(&self, images: Vec<ImagePixelData>) -> FrameBatch<B> {
+        let images = images
             .iter()
-            .map(|item| TensorData::from(item.image).convert::<B::FloatElem>())
-            .map(|data| Tensor::<B, 2>::from_data(data, &self.device))
-            .map(|tensor| tensor.reshape([1, 28, 28]))
-            // Normalize: make between [0,1] and make the mean=0 and std=1
-            // values mean=0.1307,std=0.3081 are from the PyTorch MNIST example
-            // https://github.com/pytorch/examples/blob/54f4572509891883a947411fd7239237dd2a39c3/mnist/main.py#L122
-            .map(|tensor| ((tensor / 255) - 0.1307) / 0.3081)
+            .map(|image| TensorData::from(image.pixels).convert::<B::IntElem>())
+            .map(|data| Tensor::<B, 3>::from_data(data, &self.device))
+            .map(|tensor| tensor.reshape([1, 4, 200, 200]))
+            // Простая нормализация
+            .map(|tensor| tensor / 255)
             .collect();
 
-        // let targets = items
-        //     .iter()
-        //     .map(|item| Tensor::<B, 3, Int>::from_data([item.image], &self.device))
-        //     .collect();
-
-        let images = Tensor::cat(images, 0).to_device(&self.device);
+        // let images = Tensor::cat(images, 0).to_device(&self.device);
         // let targets = Tensor::cat(images, 0).to_device(&self.device);
 
-        FrameBatch {
-            images: images.clone(),
-            targets: images.clone(),
-        }
+        let images = Tensor::cat(images, 0).to_device(&self.device);
+
+        let targets = (images
+            .clone()
+            .iter_dim(0)
+            .skip(1)
+            .chain(images.clone().iter_dim(0).take(1)))
+        .collect();
+
+        let targets = Tensor::cat(targets, 0).to_device(&self.device);
+
+        FrameBatch { images, targets }
     }
 }
