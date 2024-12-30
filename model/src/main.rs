@@ -5,7 +5,7 @@ use std::{
 
 use burn::{
     backend::Wgpu,
-    data::dataset::{self, vision::MnistDataset, Dataset},
+    data::dataset::{self, Dataset},
 };
 use images::{load_images_from_directory, process_images};
 use model::ModelConfig;
