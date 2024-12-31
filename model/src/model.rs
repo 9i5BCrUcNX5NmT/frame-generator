@@ -1,8 +1,7 @@
 use burn::{
     nn::{
         conv::{Conv2d, Conv2dConfig},
-        pool::{AdaptiveAvgPool2d, AdaptiveAvgPool2dConfig},
-        Dropout, DropoutConfig, Linear, LinearConfig, Relu,
+        Dropout, DropoutConfig, Relu,
     },
     prelude::*,
 };
@@ -86,8 +85,8 @@ impl<B: Backend> Model<B> {
     /// # Shapes
     ///   - Images [batch_size, color, height, width]
     ///   - Output [batch_size, color, height, width]
-    pub fn forward(&self, inputs: Tensor<B, 4>) -> Tensor<B, 4> {
-        // let [batch_size, colors, height, width] = inputs.dims();
+    pub fn forward(&self, inputs: Tensor<B, 3>) -> Tensor<B, 3> {
+        let [batch_size, height, width] = inputs.dims();
 
         // // Create a channel at the second dimension.
         // let x = images.reshape([batch_size, 1, height, width]);
@@ -97,9 +96,13 @@ impl<B: Backend> Model<B> {
 
         // let y = inputs.reshape([batch_size, colors, height, width]);
 
-        let y = self.conv21.forward(inputs);
+        let y = inputs.reshape([batch_size, 1, height, width]);
+
+        let y = self.conv21.forward(y);
         let y = self.dropout.forward(y);
         let y = self.activation21.forward(y);
+
+        let y = y.reshape([batch_size, height, width]);
 
         // let z = x + y;
 
