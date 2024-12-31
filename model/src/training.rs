@@ -1,18 +1,8 @@
-use crate::{
-    data::FrameBatch,
-    model::{Model, ModelConfig},
-};
+use crate::{data::FrameBatch, model::Model};
 use burn::{
-    data::dataloader::DataLoaderBuilder,
-    nn::loss::CrossEntropyLossConfig,
-    optim::AdamConfig,
     prelude::*,
-    record::CompactRecorder,
     tensor::backend::AutodiffBackend,
-    train::{
-        metric::{AccuracyMetric, LossMetric},
-        ClassificationOutput, LearnerBuilder, RegressionOutput, TrainOutput, TrainStep, ValidStep,
-    },
+    train::{TrainOutput, TrainStep, ValidStep},
 };
 use nn::loss::HuberLossConfig;
 

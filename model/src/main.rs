@@ -1,15 +1,3 @@
-use std::{
-    fs, io,
-    path::{Path, PathBuf},
-};
-
-use burn::{
-    backend::Wgpu,
-    data::dataset::{self, Dataset},
-};
-use images::{load_images_from_directory, process_images};
-use model::ModelConfig;
-
 mod data;
 mod images;
 mod model;
@@ -51,8 +39,8 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use dataset::InMemDataset;
-    use images::convert_images_to_image_pixel_data;
+    use burn::data::dataset::InMemDataset;
+    use images::{convert_images_to_image_pixel_data, load_images_from_directory};
 
     use super::*;
 
