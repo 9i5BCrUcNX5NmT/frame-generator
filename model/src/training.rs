@@ -37,7 +37,8 @@ pub struct GeneraionOutput<B: Backend> {
 
 impl<B: Backend> Adaptor<AccuracyInput<B>> for GeneraionOutput<B> {
     fn adapt(&self) -> AccuracyInput<B> {
-        AccuracyInput::new(self.output.clone(), self.targets.clone())
+        todo!("Собственные метрики?")
+        // AccuracyInput::new(self.output.clone(), self.targets.clone())
     }
 }
 
