@@ -12,6 +12,7 @@ use burn::{
     train::metric::{AccuracyInput, Adaptor, LossInput},
 };
 
+// Test
 /// Simple classification output adapted for multiple metrics.
 // #[derive(new)]
 pub struct GeneraionOutput<B: Backend> {
