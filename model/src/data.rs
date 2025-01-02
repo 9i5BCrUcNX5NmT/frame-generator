@@ -15,8 +15,8 @@ impl<B: Backend> FrameBatcher<B> {
 
 #[derive(Clone, Debug)]
 pub struct FrameBatch<B: Backend> {
-    pub images: Tensor<B, 4>,
-    pub targets: Tensor<B, 4>,
+    pub images: Tensor<B, 2>,
+    pub targets: Tensor<B, 2>,
 }
 
 impl<B: Backend> Batcher<ImagePixelData, FrameBatch<B>> for FrameBatcher<B> {
@@ -24,7 +24,7 @@ impl<B: Backend> Batcher<ImagePixelData, FrameBatch<B>> for FrameBatcher<B> {
         let images = images
             .iter()
             .map(|image| TensorData::from(image.pixels).convert::<B::IntElem>())
-            .map(|data| Tensor::<B, 4>::from_data(data, &self.device))
+            .map(|data| Tensor::<B, 2>::from_data(data, &self.device))
             // Простая нормализация
             .map(|tensor| tensor / 255)
             .collect();
@@ -35,6 +35,7 @@ impl<B: Backend> Batcher<ImagePixelData, FrameBatch<B>> for FrameBatcher<B> {
         let images = Tensor::cat(images, 0).to_device(&self.device);
 
         // Сдвинутые изображения на 1
+        // TODO: Изменить?
         let targets = images
             .clone()
             .iter_dim(0)
