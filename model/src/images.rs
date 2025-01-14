@@ -60,6 +60,7 @@ pub fn process_images(
     Ok(())
 }
 
+#[derive(Debug, Clone)]
 pub struct ImagePixelData {
     pub pixels: [[[u8; 4]; 200]; 200],
 }
