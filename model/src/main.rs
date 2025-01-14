@@ -3,7 +3,13 @@ mod images;
 mod model;
 mod training;
 
+use burn::{
+    backend::{Autodiff, Wgpu},
+    optim::AdamConfig,
+};
+use model::ModelConfig;
 use serde::Deserialize;
+use training::TrainingConfig;
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct Record {
@@ -13,28 +19,16 @@ pub struct Record {
 }
 
 fn main() {
-    // type MyBackend = Wgpu<f32, i32>;
+    type MyBackend = Wgpu<f32, i32>;
+    type MyAutodiffBackend = Autodiff<MyBackend>;
 
-    // let device = Default::default();
-    // let model = ModelConfig::new().init::<MyBackend>(&device);
-
-    // println!("{}", model);
-
-    // let file_path = "../keyboard parser/key_log.csv";
-    // // let records = read_csv(file_path).unwrap();
-
-    // let rdr = csv::ReaderBuilder::new();
-
-    // Здесь вы можете использовать records для настройки вашего dataset в burn
-    // for record in records {
-    //     println!("{:?}", record);
-    // }
-
-    // let dataset = dataset::InMemDataset::<Record>::from_csv(file_path, &rdr);
-
-    // for i in dataset.unwrap().iter() {
-    //     println!("{:?}", i);
-    // }
+    let device = burn::backend::wgpu::WgpuDevice::default();
+    let artifact_dir = "tmp/test";
+    crate::training::train::<MyAutodiffBackend>(
+        artifact_dir,
+        TrainingConfig::new(ModelConfig::new(), AdamConfig::new()),
+        device.clone(),
+    );
 }
 
 #[cfg(test)]
@@ -47,7 +41,7 @@ mod tests {
     #[ignore = "for developing"]
     #[test]
     fn dev_test() {
-        // let input_dir = "../data/images"; // Путь к входной папке с изображениями
+        // let input_dir = "../data/images/raw"; // Путь к входной папке с изображениями
         let output_dir = "../data/resized_images"; // Путь к выходной папке для сохранения измененных изображений
                                                    // let width = 200;
                                                    // let height = 200;
@@ -58,6 +52,6 @@ mod tests {
 
         let images = convert_images_to_image_pixel_data(images);
 
-        let image_dataset = InMemDataset::new(images);
+        let image_dataset: InMemDataset<images::ImagePixelData> = InMemDataset::new(images);
     }
 }
