@@ -61,7 +61,7 @@ impl ModelConfig {
             // activation12: Relu,
             // conv13: Conv2dConfig::new([64, 32], [3, 3]).init(device),
             // activation13: Relu,
-            conv21: Conv2dConfig::new([64, 1], [1, 1]).init(device),
+            conv21: Conv2dConfig::new([64, 4], [1, 1]).init(device),
             activation21: Relu,
             // conv22: Conv2dConfig::new([64, 64], [1, 1]).init(device),
             // activation22: Relu,
@@ -97,9 +97,9 @@ impl<B: Backend> Model<B> {
         // let y = inputs.reshape([batch_size, colors, height, width]);
 
         // let y = inputs.reshape([batch_size, 1, height, width]);
-        let y = inputs;
+        // println!("{:?}", inputs.dims());
 
-        let y = self.conv21.forward(y);
+        let y = self.conv21.forward(inputs);
         let y = self.dropout.forward(y);
         let y = self.activation21.forward(y);
 
