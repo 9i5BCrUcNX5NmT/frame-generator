@@ -5,6 +5,7 @@ use burn::{
     },
     prelude::*,
 };
+use nn::pool::{AdaptiveAvgPool2d, AdaptiveAvgPool2dConfig};
 
 #[derive(Module, Debug)]
 pub struct Model<B: Backend> {
@@ -25,6 +26,8 @@ pub struct Model<B: Backend> {
     // conv23: Conv2d<B>,
     // activation23: Relu,
     dropout: Dropout,
+
+    pool: AdaptiveAvgPool2d,
 
     // add
     conv31: Conv2d<B>,
@@ -61,14 +64,15 @@ impl ModelConfig {
             // activation12: Relu,
             // conv13: Conv2dConfig::new([64, 32], [3, 3]).init(device),
             // activation13: Relu,
-            conv21: Conv2dConfig::new([64, 4], [1, 1]).init(device),
+            conv21: Conv2dConfig::new([1, 32], [3, 3]).init(device),
             activation21: Relu,
             // conv22: Conv2dConfig::new([64, 64], [1, 1]).init(device),
             // activation22: Relu,
             // conv23: Conv2dConfig::new([64, 64], [1, 1]).init(device),
             // activation23: Relu,
             dropout: DropoutConfig::new(self.dropout).init(),
-            conv31: Conv2dConfig::new([64, 64], [3, 3]).init(device),
+            conv31: Conv2dConfig::new([32, 4], [3, 3]).init(device),
+            pool: AdaptiveAvgPool2dConfig::new([200, 200]).init(),
             activation31: Relu,
             // conv32: Conv2dConfig::new([64, 64], [3, 3]).init(device),
             // activation32: Relu,
@@ -99,9 +103,12 @@ impl<B: Backend> Model<B> {
         // let y = inputs.reshape([batch_size, 1, height, width]);
         // println!("{:?}", inputs.dims());
 
-        let y = self.conv21.forward(inputs);
-        let y = self.dropout.forward(y);
-        let y = self.activation21.forward(y);
+        let x = self.conv21.forward(inputs);
+        let x = self.activation21.forward(x);
+        let x = self.dropout.forward(x);
+        let x = self.conv31.forward(x);
+        let x = self.pool.forward(x);
+        let x = self.activation31.forward(x);
 
         // let y = y.reshape([batch_size, height, width]);
 
@@ -112,6 +119,6 @@ impl<B: Backend> Model<B> {
 
         // let r = y.reshape([batch_size, colors, height, width]);
 
-        y
+        x
     }
 }

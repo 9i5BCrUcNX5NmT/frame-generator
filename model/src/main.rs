@@ -60,6 +60,7 @@ mod tests {
 
         // let image_dataset: InMemDataset<images::ImagePixelData> = InMemDataset::new(images);
 
-        crate::inference::infer::<MyBackend>(artifact_dir, device, images_data[0].clone());
+        // crate::inference::infer::<MyBackend>(artifact_dir, device.clone(), images_data[0].clone());
+        crate::inference::infer::<MyBackend>(artifact_dir, device.clone(), images_data[1].clone());
     }
 }

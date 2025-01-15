@@ -33,7 +33,7 @@ fn resize_image(image: &DynamicImage, width: u32, height: u32) -> DynamicImage {
     image.resize_exact(width, height, image::imageops::FilterType::Lanczos3)
 }
 
-fn save_image(image: &DynamicImage, output_path: &Path) {
+pub fn save_image(image: &DynamicImage, output_path: &Path) {
     image.save(output_path).expect("Failed to save image");
 }
 
@@ -62,15 +62,17 @@ pub fn process_images(
 
 #[derive(Debug, Clone)]
 pub struct ImagePixelData {
-    pub pixels: [[[u8; 4]; 200]; 200],
+    pub pixels: [[[u8; 200]; 200]; 4],
 }
 
 impl ImagePixelData {
     pub fn from_image(image: &DynamicImage) -> Self {
-        let mut pixels: [[[u8; 4]; 200]; 200] = [[[0; 4]; 200]; 200];
+        let mut pixels: [[[u8; 200]; 200]; 4] = [[[0; 200]; 200]; 4];
 
-        for pixel in image.pixels() {
-            pixels[pixel.0 as usize][pixel.1 as usize] = pixel.2 .0;
+        for (height, width, colors) in image.pixels() {
+            for (i, color) in colors.0.iter().enumerate() {
+                pixels[i][height as usize][width as usize] = *color;
+            }
         }
 
         ImagePixelData { pixels }
@@ -79,11 +81,16 @@ impl ImagePixelData {
     pub fn to_image(&self) -> DynamicImage {
         let mut img = RgbaImage::new(200, 200);
 
-        for (height, i) in self.pixels.iter().enumerate() {
-            for (width, j) in i.iter().enumerate() {
-                let pixel = Rgba(*j);
+        for i in 0..200 {
+            for j in 0..200 {
+                let pixel = Rgba([
+                    self.pixels[0][i][j],
+                    self.pixels[1][i][j],
+                    self.pixels[2][i][j],
+                    self.pixels[3][i][j],
+                ]);
 
-                img.put_pixel(width as u32, height as u32, pixel);
+                img.put_pixel(i as u32, j as u32, pixel);
             }
         }
 
