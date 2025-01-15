@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::{fs, path::Path};
 
 use burn::{
     config::Config,
@@ -65,16 +65,12 @@ pub fn infer<B: Backend>(artifact_dir: &str, device: B::Device, item: ImagePixel
 
     let images = convert_image_pixel_data_to_images(images_data);
 
-    let mut i = 0;
+    // Создаем выходную директорию, если она не существует
+    let output_str = format!("{artifact_dir}/output");
+    let output_dir = Path::new(&output_str);
+    fs::create_dir_all(output_dir).unwrap();
 
-    for image in images {
-        i += 1;
-
-        images::save_image(
-            &image,
-            Path::new(&format!("{artifact_dir}/output/image_{i}.png")),
-        );
-    }
+    images::save_image(&images[0], &output_dir.join(format!("image.png")));
 
     // println!("Predicted {} ", output);
 }
