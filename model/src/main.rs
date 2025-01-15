@@ -1,5 +1,6 @@
 mod data;
 mod images;
+mod inference;
 mod model;
 mod training;
 
@@ -41,17 +42,24 @@ mod tests {
     #[ignore = "for developing"]
     #[test]
     fn dev_test() {
-        // let input_dir = "../data/images/raw"; // Путь к входной папке с изображениями
-        let output_dir = "../data/resized_images"; // Путь к выходной папке для сохранения измененных изображений
-                                                   // let width = 200;
-                                                   // let height = 200;
+        type MyBackend = Wgpu<f32, i32>;
+
+        let device = burn::backend::wgpu::WgpuDevice::default();
+        let artifact_dir = "tmp/test";
+
+        let input_dir = "../data/images/test"; // Путь к входной папке с изображениями
+                                               // let output_dir = "../data/resized_images"; // Путь к выходной папке для сохранения измененных изображений
+                                               // let width = 200;
+                                               // let height = 200;
 
         // process_images(input_dir, output_dir, width, height).unwrap();
 
-        let images = load_images_from_directory(output_dir).unwrap();
+        let images = load_images_from_directory(input_dir).unwrap();
 
-        let images = convert_images_to_image_pixel_data(images);
+        let images_data = convert_images_to_image_pixel_data(images);
 
-        let image_dataset: InMemDataset<images::ImagePixelData> = InMemDataset::new(images);
+        // let image_dataset: InMemDataset<images::ImagePixelData> = InMemDataset::new(images);
+
+        crate::inference::infer::<MyBackend>(artifact_dir, device, images_data[0].clone());
     }
 }

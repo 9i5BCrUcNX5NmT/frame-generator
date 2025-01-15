@@ -3,7 +3,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use image::{DynamicImage, GenericImageView};
+use image::{DynamicImage, GenericImageView, Rgba, RgbaImage};
 
 pub struct ImageData {
     image_path: PathBuf,
@@ -65,21 +65,43 @@ pub struct ImagePixelData {
     pub pixels: [[[u8; 4]; 200]; 200],
 }
 
+impl ImagePixelData {
+    pub fn from_image(image: &DynamicImage) -> Self {
+        let mut pixels: [[[u8; 4]; 200]; 200] = [[[0; 4]; 200]; 200];
+
+        for pixel in image.pixels() {
+            pixels[pixel.0 as usize][pixel.1 as usize] = pixel.2 .0;
+        }
+
+        ImagePixelData { pixels }
+    }
+
+    pub fn to_image(&self) -> DynamicImage {
+        let mut img = RgbaImage::new(200, 200);
+
+        for (height, i) in self.pixels.iter().enumerate() {
+            for (width, j) in i.iter().enumerate() {
+                let pixel = Rgba(*j);
+
+                img.put_pixel(width as u32, height as u32, pixel);
+            }
+        }
+
+        image::DynamicImage::ImageRgba8(img)
+    }
+}
+
 pub fn convert_images_to_image_pixel_data(images: Vec<ImageData>) -> Vec<ImagePixelData> {
-    let images_pixels: Vec<ImagePixelData> = images
+    images
         .iter()
         .map(|image_data| load_image(image_data))
-        .map(|image| {
-            let mut pixels: [[[u8; 4]; 200]; 200] = [[[0; 4]; 200]; 200];
+        .map(|image| ImagePixelData::from_image(&image))
+        .collect()
+}
 
-            for pixel in image.pixels() {
-                pixels[pixel.0 as usize][pixel.1 as usize] = pixel.2 .0;
-            }
-
-            pixels
-        })
-        .map(|pixels| ImagePixelData { pixels })
-        .collect();
-
-    images_pixels
+pub fn convert_image_pixel_data_to_images(images_data: Vec<ImagePixelData>) -> Vec<DynamicImage> {
+    images_data
+        .iter()
+        .map(|image_data| image_data.to_image())
+        .collect()
 }
