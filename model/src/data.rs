@@ -15,12 +15,12 @@ impl<B: Backend> FrameBatcher<B> {
 
 #[derive(Clone, Debug)]
 pub struct FrameBatch<B: Backend> {
-    pub images: Tensor<B, 4>,
+    pub inputs: Tensor<B, 4>,
     pub targets: Tensor<B, 4>,
 }
 
 impl<B: Backend> Batcher<ImagePixelData, FrameBatch<B>> for FrameBatcher<B> {
-    fn batch(&self, images: Vec<ImagePixelData>) -> FrameBatch<B> {
+    fn batch(&self, images: Vec<ImagePixelData>, keys: Vec<todo!("Тип")>) -> FrameBatch<B> {
         let images = images
             .iter()
             .map(|image| TensorData::from(image.pixels).convert::<B::IntElem>())
@@ -31,22 +31,24 @@ impl<B: Backend> Batcher<ImagePixelData, FrameBatch<B>> for FrameBatcher<B> {
             .map(|tensor| tensor / 255)
             .collect();
 
-        // let images = Tensor::cat(images, 0).to_device(&self.device);
-        // let targets = Tensor::cat(images, 0).to_device(&self.device);
+        // let inputs = Tensor::cat(inputs, 0).to_device(&self.device);
+        // let targets = Tensor::cat(inputs, 0).to_device(&self.device);
 
         let images = Tensor::cat(images, 0).to_device(&self.device);
 
+        let inputs: Tensor<B, 4> = todo!("Объединение клавиш ввода с изображениями");
+
         // Сдвинутые изображения на 1
         // TODO: Изменить?
-        let targets = images
+        let targets = inputs
             .clone()
             .iter_dim(0)
             .skip(1)
-            .chain(images.clone().iter_dim(0).take(1))
+            .chain(inputs.clone().iter_dim(0).take(1))
             .collect();
 
         let targets = Tensor::cat(targets, 0).to_device(&self.device);
 
-        FrameBatch { images, targets }
+        FrameBatch { inputs, targets }
     }
 }
