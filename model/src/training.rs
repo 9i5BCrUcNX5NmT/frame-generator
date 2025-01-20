@@ -25,10 +25,10 @@ use burn::{
 impl<B: Backend> Model<B> {
     pub fn forward_generation(
         &self,
-        images: Tensor<B, 4>,
+        inputs: Tensor<B, 4>,
         targets: Tensor<B, 4>,
     ) -> RegressionOutput<B> {
-        let output = self.forward(images);
+        let output = self.forward(inputs);
         // Какую дельту ставить? Я хз
         let loss = HuberLossConfig::new(0.5)
             .init()
@@ -51,7 +51,7 @@ impl<B: Backend> Model<B> {
 
 impl<B: AutodiffBackend> TrainStep<FrameBatch<B>, RegressionOutput<B>> for Model<B> {
     fn step(&self, batch: FrameBatch<B>) -> TrainOutput<RegressionOutput<B>> {
-        let item = self.forward_generation(batch.images, batch.targets);
+        let item = self.forward_generation(batch.inputs, batch.targets);
 
         TrainOutput::new(self, item.loss.backward(), item)
     }
@@ -59,7 +59,7 @@ impl<B: AutodiffBackend> TrainStep<FrameBatch<B>, RegressionOutput<B>> for Model
 
 impl<B: Backend> ValidStep<FrameBatch<B>, RegressionOutput<B>> for Model<B> {
     fn step(&self, batch: FrameBatch<B>) -> RegressionOutput<B> {
-        self.forward_generation(batch.images, batch.targets)
+        self.forward_generation(batch.inputs, batch.targets)
     }
 }
 
