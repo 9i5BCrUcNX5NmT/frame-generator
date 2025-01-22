@@ -20,7 +20,9 @@ pub struct FrameBatch<B: Backend> {
 }
 
 impl<B: Backend> Batcher<ImagePixelData, FrameBatch<B>> for FrameBatcher<B> {
-    fn batch(&self, images: Vec<ImagePixelData>, keys: Vec<todo!("Тип")>) -> FrameBatch<B> {
+    fn batch(&self, images: Vec<ImagePixelData>) -> FrameBatch<B> {
+        // , keys: Vec<todo!("Тип")>
+
         let images = images
             .iter()
             .map(|image| TensorData::from(image.pixels).convert::<B::IntElem>())
