@@ -21,8 +21,6 @@ pub struct FrameBatch<B: Backend> {
 
 impl<B: Backend> Batcher<ImagePixelData, FrameBatch<B>> for FrameBatcher<B> {
     fn batch(&self, images: Vec<ImagePixelData>) -> FrameBatch<B> {
-        // , keys: Vec<todo!("Тип")>
-
         let images = images
             .iter()
             .map(|image| TensorData::from(image.pixels).convert::<B::IntElem>())
@@ -38,7 +36,7 @@ impl<B: Backend> Batcher<ImagePixelData, FrameBatch<B>> for FrameBatcher<B> {
 
         let images = Tensor::cat(images, 0).to_device(&self.device);
 
-        let inputs: Tensor<B, 4> = todo!("Объединение клавиш ввода с изображениями");
+        let inputs: Tensor<B, 4> = todo!();
 
         // Сдвинутые изображения на 1
         // TODO: Изменить?

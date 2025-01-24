@@ -1,3 +1,4 @@
+mod csv_processing;
 mod data;
 mod images;
 mod inference;
@@ -81,4 +82,8 @@ mod tests {
         // crate::inference::infer::<MyBackend>(artifact_dir, device.clone(), images_data[0].clone());
         // crate::inference::infer::<MyBackend>(artifact_dir, device.clone(), images_data[1].clone());
     }
+
+    #[ignore = "for developing"]
+    #[test]
+    fn work_with_csv() {}
 }
