@@ -10,17 +10,12 @@ use burn::{
     record::CompactRecorder,
     tensor::backend::AutodiffBackend,
     train::{
-        metric::{AccuracyMetric, LossMetric},
-        LearnerBuilder, RegressionOutput, TrainOutput, TrainStep, ValidStep,
+        metric::LossMetric, LearnerBuilder, RegressionOutput, TrainOutput, TrainStep, ValidStep,
     },
 };
 use nn::loss::HuberLossConfig;
 
-use burn::{
-    prelude::Backend,
-    tensor::Tensor,
-    train::metric::{AccuracyInput, Adaptor, LossInput},
-};
+use burn::{prelude::Backend, tensor::Tensor};
 
 impl<B: Backend> Model<B> {
     pub fn forward_generation(
