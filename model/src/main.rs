@@ -3,6 +3,7 @@ mod data;
 mod images;
 mod inference;
 mod model;
+mod my_types;
 mod training;
 
 use burn::{
@@ -85,5 +86,7 @@ mod tests {
 
     #[ignore = "for developing"]
     #[test]
-    fn work_with_csv() {}
+    fn work_with_csv() {
+        let _ = csv_processing::load_keys_from_directory("../data/keys");
+    }
 }
