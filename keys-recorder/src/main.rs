@@ -13,6 +13,7 @@ use serde::Serialize;
 struct CsvRecord {
     keys: String,
     mouse: String,
+    buttons: String,
 }
 
 fn main() -> io::Result<()> {
@@ -22,11 +23,15 @@ fn main() -> io::Result<()> {
     let mouse_states = Arc::new(Mutex::new(HashSet::new()));
     let mouse_states_clone = Arc::clone(&mouse_states);
 
+    let button_states = Arc::new(Mutex::new(HashSet::new()));
+    let button_states_clone = Arc::clone(&button_states);
+
     // Запуск потока для прослушивания нажатий клавиш
     thread::spawn(move || {
         listen(move |event| {
             let mut k_states = key_states_clone.lock().unwrap();
             let mut m_states = mouse_states_clone.lock().unwrap();
+            let mut b_states = button_states_clone.lock().unwrap();
 
             match event.event_type {
                 EventType::KeyPress(key) => {
@@ -39,10 +44,10 @@ fn main() -> io::Result<()> {
                     m_states.insert(format!("{},{}", x, y)); // Сохраняем координаты мыши
                 }
                 EventType::ButtonPress(button) => {
-                    k_states.insert(format!("{:?}", button)); // Сохраняем нажатие клавиши
+                    b_states.insert(format!("{:?}", button)); // Сохраняем нажатие клавиши
                 }
                 EventType::ButtonRelease(button) => {
-                    k_states.remove(&format!("{:?}", button)); // Удаляем отпускание клавиши
+                    b_states.remove(&format!("{:?}", button)); // Удаляем отпускание клавиши
                 }
                 EventType::Wheel { delta_x, delta_y } => {
                     m_states.insert(format!("{},{}", delta_x, delta_y)); // Удаляем отпускание клавиши
@@ -68,16 +73,25 @@ fn main() -> io::Result<()> {
         let k_states = key_states.lock().unwrap();
         let mut m_states = mouse_states.lock().unwrap();
 
-        if !k_states.is_empty() || !m_states.is_empty() {
+        let b_states = button_states.lock().unwrap();
+
+        if !k_states.is_empty() || !m_states.is_empty() || !b_states.is_empty() {
             let mut record = CsvRecord {
                 keys: "".to_string(),
                 mouse: "".to_string(),
+                buttons: "".to_string(),
             };
 
             if !k_states.is_empty() {
                 // Объединяем все нажатия клавиш в одну строку
                 let keys_pressed = k_states.iter().cloned().collect::<Vec<String>>().join(", "); // Объединяем нажатия в одну строку
                 record.keys = keys_pressed;
+            }
+
+            if !b_states.is_empty() {
+                // Объединяем все нажатия клавиш в одну строку
+                let buttons_pressed = b_states.iter().cloned().collect::<Vec<String>>().join(", "); // Объединяем нажатия в одну строку
+                record.buttons = buttons_pressed;
             }
 
             if !m_states.is_empty() {
