@@ -3,7 +3,6 @@ mod data;
 mod images;
 mod inference;
 mod model;
-mod my_types;
 mod training;
 
 use burn::{
