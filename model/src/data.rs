@@ -1,6 +1,6 @@
 use burn::{data::dataloader::batcher::Batcher, prelude::*};
 
-use crate::images::ImagePixelData;
+use crate::{csv_processing::KeysRecord, images::ImagePixelData, types::MyData};
 
 #[derive(Clone)]
 pub struct FrameBatcher<B: Backend> {
@@ -19,11 +19,11 @@ pub struct FrameBatch<B: Backend> {
     pub targets: Tensor<B, 4>,
 }
 
-impl<B: Backend> Batcher<ImagePixelData, FrameBatch<B>> for FrameBatcher<B> {
-    fn batch(&self, images: Vec<ImagePixelData>) -> FrameBatch<B> {
-        let images = images
+impl<B: Backend> Batcher<MyData, FrameBatch<B>> for FrameBatcher<B> {
+    fn batch(&self, mydata: Vec<MyData>) -> FrameBatch<B> {
+        let images = mydata
             .iter()
-            .map(|image| TensorData::from(image.pixels).convert::<B::IntElem>())
+            .map(|data| TensorData::from(data.image.pixels).convert::<B::IntElem>())
             .map(|data| Tensor::<B, 3>::from_data(data, &self.device))
             // 1 штука, 4 параметра цвета, 200 на 200 размер
             .map(|tensor| tensor.reshape([1, 4, 200, 200]))

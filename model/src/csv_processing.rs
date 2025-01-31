@@ -8,7 +8,7 @@ struct CsvRecord {
     mouse: String,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct KeysRecord {
     keys: Vec<u8>,        // преобразованные названия клавиш в числа
     mouse: Vec<[i32; 2]>, // Движения и скроллинг мыши

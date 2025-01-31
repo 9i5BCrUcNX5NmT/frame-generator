@@ -4,6 +4,7 @@ mod images;
 mod inference;
 mod model;
 mod training;
+mod types;
 
 use burn::{
     backend::{Autodiff, Wgpu},
