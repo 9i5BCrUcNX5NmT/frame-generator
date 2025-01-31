@@ -3,8 +3,8 @@ mod data;
 mod images;
 mod inference;
 mod model;
-mod my_types;
 mod training;
+mod types;
 
 use burn::{
     backend::{Autodiff, Wgpu},
