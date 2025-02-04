@@ -27,7 +27,7 @@ impl<B: Backend> Batcher<MyData, FrameBatch<B>> for FrameBatcher<B> {
             .map(|data| Tensor::<B, 3>::from_data(data, &self.device))
             // 1 штука, 4 параметра цвета, 200 на 200 размер
             .map(|tensor| tensor.reshape([1, 4, 200, 200]))
-            // Простая нормализация
+            // Простая нормализация цветов
             .map(|tensor| tensor / 255)
             .collect();
 
@@ -36,7 +36,51 @@ impl<B: Backend> Batcher<MyData, FrameBatch<B>> for FrameBatcher<B> {
 
         let images = Tensor::cat(images, 0).to_device(&self.device);
 
-        let inputs: Tensor<B, 4> = todo!();
+        let keys = mydata
+            .iter()
+            .map(|data| {
+                let mut keys_vector = [0; 200];
+
+                for i in &data.key.keys {
+                    keys_vector[*i as usize] += 1;
+                }
+
+                keys_vector
+            })
+            .map(|vector| TensorData::from(vector).convert::<B::IntElem>())
+            .map(|data| Tensor::<B, 1>::from_data(data, &self.device))
+            // 1 штука, 4 параметра цвета, 200 на 200 размер
+            .map(|tensor| tensor.reshape([1, 1, 1, 200]))
+            // // Простая нормализация
+            // .map(|tensor| tensor / 255)
+            .collect();
+
+        let keys = Tensor::cat(keys, 0);
+
+        let mouse = mydata
+            .iter()
+            .map(|data| {
+                let mut mouse_vector = [[0; 2]; 200]; // Может не хватить, тк в коде нет ограничений на количество передвижений мыши
+
+                for (i, value) in data.key.mouse.iter().enumerate() {
+                    mouse_vector[i as usize] = *value;
+                }
+
+                mouse_vector
+            })
+            .map(|vector| TensorData::from(vector).convert::<B::IntElem>())
+            .map(|data| Tensor::<B, 1>::from_data(data, &self.device))
+            // 1 штука, 4 параметра цвета, 200 на 200 размер
+            .map(|tensor| tensor.reshape([1, 1, 2, 200]))
+            // // Простая нормализация
+            // .map(|tensor| tensor / 255)
+            .collect();
+
+        let mouse = Tensor::cat(mouse, 0);
+
+        let inputs = Tensor::cat(vec![keys, mouse], 0).to_device(&self.device);
+        let inputs = inputs.reshape([1, 1, 3, 200]); // на всякий случай
+        todo!("Как соединить images и mouse, keys");
 
         // Сдвинутые изображения на 1
         // TODO: Изменить?

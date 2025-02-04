@@ -10,8 +10,8 @@ struct CsvRecord {
 
 #[derive(Clone, Debug)]
 pub struct KeysRecord {
-    keys: Vec<u8>,        // преобразованные названия клавиш в числа
-    mouse: Vec<[i32; 2]>, // Движения и скроллинг мыши
+    pub keys: Vec<u8>,        // преобразованные названия клавиш в числа
+    pub mouse: Vec<[i32; 2]>, // Движения и скроллинг мыши
 }
 
 pub fn load_keys_from_directory(dir: &str) -> io::Result<Vec<KeysRecord>> {
