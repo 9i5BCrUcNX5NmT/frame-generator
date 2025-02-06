@@ -1,12 +1,12 @@
 use csv::Writer;
-use mp4::{Mp4Config, Mp4Sample, Mp4Writer};
+use mp4::{Mp4Config, Mp4Sample, Mp4Writer, TrackConfig};
 use rdev::{listen, EventType};
 use scap::capturer::{Area, Capturer, Options, Point, Size};
 use std::collections::HashSet;
 use std::fs::{File, OpenOptions};
 use std::io::{self, BufReader};
 use std::sync::{Arc, Mutex};
-use std::thread;
+use std::thread::{self, sleep};
 use std::time::Duration;
 
 use serde::Serialize;
@@ -121,9 +121,9 @@ impl VideoRecorder {
             }
         }
 
-        // Get recording targets
-        let targets = scap::get_all_targets();
-        println!("Targets: {:?}", targets);
+        // // Get recording targets
+        // let targets = scap::get_all_targets();
+        // println!("Targets: {:?}", targets);
 
         // All your displays and windows are targets
         // You can filter this and capture the one you need.
@@ -153,48 +153,85 @@ impl VideoRecorder {
         // Start Capture
         capturer.start_capture();
 
+        sleep(Duration::from_secs(1));
+
+        // Открываем файл с помощью OpenOptions
+        let file_path = "../data/videos/test_2.mp4";
+        let mut file = OpenOptions::new()
+            .write(true) // Указываем, что мы хотим записывать в файл
+            .create(true) // Создаем файл, если он не существует
+            .append(true) // Добавляем данные в конец файла
+            .open(file_path)
+            .unwrap(); // Открываем файл
+
+        let writer = io::BufWriter::new(file);
+
+        let mp4_config = Mp4Config {
+            major_brand: str::parse("isom").unwrap(),
+            minor_version: 512,
+            compatible_brands: vec![
+                str::parse("isom").unwrap(),
+                str::parse("iso2").unwrap(),
+                str::parse("avc1").unwrap(),
+                str::parse("mp41").unwrap(),
+            ],
+            timescale: 1000,
+        };
+
+        let mut mp4_writer = Mp4Writer::write_start(writer, &mp4_config).unwrap();
+
+        let sample = Mp4Sample {
+            start_time: 0,
+            duration: 1000 / 60,
+            rendering_offset: 0, // TODO: хз для чего
+            is_sync: false,      // TODO: хз для чего
+            bytes: match capturer.get_next_frame().unwrap() {
+                scap::frame::Frame::YUVFrame(yuvframe) => todo!(),
+                scap::frame::Frame::RGB(rgbframe) => todo!(),
+                scap::frame::Frame::RGBx(rgbx_frame) => todo!(),
+                scap::frame::Frame::XBGR(xbgrframe) => todo!(),
+                scap::frame::Frame::BGRx(bgrx_frame) => todo!(),
+                scap::frame::Frame::BGR0(bgrframe) => todo!(),
+                scap::frame::Frame::BGRA(bgraframe) => bgraframe.data.into(),
+            },
+        }; // Длительность 1000 (1 секунда)
+
+        let track_config = TrackConfig {
+            track_type: mp4::TrackType::Video,
+            timescale: 1000,
+            language: "ru".to_string(),
+            media_conf: mp4::MediaConfig::HevcConfig(mp4::HevcConfig {
+                width: 2000,
+                height: 1000,
+            }),
+        };
+        mp4_writer.add_track(&track_config).unwrap();
+        mp4_writer.write_sample(1, &sample).unwrap();
+
+        mp4_writer.write_end().unwrap();
+
         // Stop Capture
         capturer.stop_capture();
     }
 }
 
 fn main() {
-    // Открываем файл с помощью OpenOptions
-    let file_path = "../data/videos/test.mp4";
-    let mut file = OpenOptions::new()
-        .write(true) // Указываем, что мы хотим записывать в файл
-        .create(true) // Создаем файл, если он не существует
-        .append(true) // Добавляем данные в конец файла
-        .open(file_path)
-        .unwrap(); // Открываем файл
+    // let f = File::open("../data/videos/test.mp4").unwrap();
+    // let size = f.metadata().unwrap().len();
+    // let reader = BufReader::new(f);
 
-    let writer = io::BufWriter::new(file);
+    // let mp4 = mp4::Mp4Reader::read_header(reader, size).unwrap();
 
-    let config = Mp4Config {
-        major_brand: str::parse("isom").unwrap(),
-        minor_version: 512,
-        compatible_brands: vec![
-            str::parse("isom").unwrap(),
-            str::parse("iso2").unwrap(),
-            str::parse("avc1").unwrap(),
-            str::parse("mp41").unwrap(),
-        ],
-        timescale: 1000,
-    };
-
-    let mut mp4_writer = Mp4Writer::write_start(writer, &config).unwrap();
-
-    let sample = Mp4Sample {
-        start_time: todo!(),
-        duration: todo!(),
-        rendering_offset: todo!(),
-        is_sync: todo!(),
-        bytes: todo!(),
-    }; // Длительность 1000 (1 секунда)
-    mp4_writer.write_sample(0, &sample).unwrap();
-
-    mp4_writer.write_end().unwrap();
-
+    // // Track info.
+    // for track in mp4.tracks().values() {
+    //     println!(
+    //         "track: #{}({}) {} : {}",
+    //         track.track_id(),
+    //         track.language(),
+    //         track.track_type().unwrap(),
+    //         track.box_type().unwrap(),
+    //     );
+    // }
     // KeysRecorder::record().unwrap();
-    // VideoRecorder::record();
+    VideoRecorder::record();
 }
