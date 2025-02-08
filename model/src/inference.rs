@@ -12,9 +12,10 @@ use crate::{
     data::FrameBatcher,
     images::{self, convert_image_pixel_data_to_images, ImagePixelData},
     training::TrainingConfig,
+    types::MyData,
 };
 
-pub fn infer<B: Backend>(artifact_dir: &str, device: B::Device, item: ImagePixelData) {
+pub fn infer<B: Backend>(artifact_dir: &str, device: B::Device, item: MyData) {
     let config = TrainingConfig::load(format!("{artifact_dir}/config.json"))
         .expect("Config should exist for the model");
     let record = CompactRecorder::new()
