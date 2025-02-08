@@ -94,42 +94,44 @@ pub fn train<B: AutodiffBackend>(artifact_dir: &str, config: TrainingConfig, dev
     let train_images = load_images_from_directory(train_dir).unwrap();
     let test_images = load_images_from_directory(test_dir).unwrap();
 
-    let dataset_train: InMemDataset<images::ImagePixelData> =
-        InMemDataset::new(convert_images_to_image_pixel_data(train_images));
-    let dataset_test: InMemDataset<images::ImagePixelData> =
-        InMemDataset::new(convert_images_to_image_pixel_data(test_images));
+    // let dataset_train: InMemDataset<images::ImagePixelData> =
+    //     InMemDataset::new(convert_images_to_image_pixel_data(train_images));
+    // let dataset_test: InMemDataset<images::ImagePixelData> =
+    //     InMemDataset::new(convert_images_to_image_pixel_data(test_images));
 
-    let batcher_train = FrameBatcher::<B>::new(device.clone());
-    let batcher_valid = FrameBatcher::<B::InnerBackend>::new(device.clone());
+    todo!();
 
-    let dataloader_train = DataLoaderBuilder::new(batcher_train)
-        .batch_size(config.batch_size)
-        .shuffle(config.seed)
-        .num_workers(config.num_workers)
-        .build(dataset_train);
+    // let batcher_train = FrameBatcher::<B>::new(device.clone());
+    // let batcher_valid = FrameBatcher::<B::InnerBackend>::new(device.clone());
 
-    let dataloader_test = DataLoaderBuilder::new(batcher_valid)
-        .batch_size(config.batch_size)
-        .shuffle(config.seed)
-        .num_workers(config.num_workers)
-        .build(dataset_test);
+    // let dataloader_train = DataLoaderBuilder::new(batcher_train)
+    //     .batch_size(config.batch_size)
+    //     .shuffle(config.seed)
+    //     .num_workers(config.num_workers)
+    //     .build(dataset_train);
 
-    let learner = LearnerBuilder::new(artifact_dir)
-        .metric_train_numeric(LossMetric::new())
-        .metric_valid_numeric(LossMetric::new())
-        .with_file_checkpointer(CompactRecorder::new())
-        .devices(vec![device.clone()])
-        .num_epochs(config.num_epochs)
-        .summary()
-        .build(
-            config.model.init::<B>(&device),
-            config.optimizer.init(),
-            config.learning_rate,
-        );
+    // let dataloader_test = DataLoaderBuilder::new(batcher_valid)
+    //     .batch_size(config.batch_size)
+    //     .shuffle(config.seed)
+    //     .num_workers(config.num_workers)
+    //     .build(dataset_test);
 
-    let model_trained = learner.fit(dataloader_train, dataloader_test);
+    // let learner = LearnerBuilder::new(artifact_dir)
+    //     .metric_train_numeric(LossMetric::new())
+    //     .metric_valid_numeric(LossMetric::new())
+    //     .with_file_checkpointer(CompactRecorder::new())
+    //     .devices(vec![device.clone()])
+    //     .num_epochs(config.num_epochs)
+    //     .summary()
+    //     .build(
+    //         config.model.init::<B>(&device),
+    //         config.optimizer.init(),
+    //         config.learning_rate,
+    //     );
 
-    model_trained
-        .save_file(format!("{artifact_dir}/model"), &CompactRecorder::new())
-        .expect("Trained model should be saved successfully");
+    // let model_trained = learner.fit(dataloader_train, dataloader_test);
+
+    // model_trained
+    //     .save_file(format!("{artifact_dir}/model"), &CompactRecorder::new())
+    //     .expect("Trained model should be saved successfully");
 }
