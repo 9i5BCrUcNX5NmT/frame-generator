@@ -37,29 +37,6 @@ pub fn save_image(image: &DynamicImage, output_path: &Path) {
     image.save(output_path).expect("Failed to save image");
 }
 
-pub fn process_images(
-    input_dir: &str,
-    output_dir: &str,
-    width: u32,
-    height: u32,
-) -> io::Result<()> {
-    let dataset = load_images_from_directory(input_dir)?;
-
-    // Создаем выходную директорию, если она не существует
-    fs::create_dir_all(output_dir)?;
-
-    for data in dataset {
-        let image = load_image(&data);
-        let resized_image = resize_image(&image, width, height); // Изменяем размер до 200x200
-
-        // Создаем путь для сохранения измененного изображения
-        let output_path = Path::new(output_dir).join(data.image_path.file_name().unwrap());
-        save_image(&resized_image, &output_path);
-    }
-
-    Ok(())
-}
-
 #[derive(Debug, Clone)]
 pub struct ImagePixelData {
     pub pixels: [[[u8; 200]; 200]; 4],

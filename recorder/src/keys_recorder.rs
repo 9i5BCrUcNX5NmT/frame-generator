@@ -54,6 +54,7 @@ pub fn record() -> io::Result<()> {
 
     // Запись в CSV файл каждые 50 мс (или по вашему усмотрению)
     let file_path = "../data/keys/key_events.csv";
+
     let mut writer = Writer::from_writer(
         OpenOptions::new()
             .append(true)
