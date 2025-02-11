@@ -41,7 +41,7 @@ impl<B: Backend> Batcher<MyData, FrameBatch<B>> for FrameBatcher<B> {
             .map(|data| {
                 let mut keys_vector = [0; 200];
 
-                for i in &data.key.keys {
+                for i in &data.keys.keys {
                     keys_vector[*i as usize] += 1;
                 }
 
@@ -62,14 +62,14 @@ impl<B: Backend> Batcher<MyData, FrameBatch<B>> for FrameBatcher<B> {
             .map(|data| {
                 let mut mouse_vector = [[0; 2]; 200]; // Может не хватить, тк в коде нет ограничений на количество передвижений мыши
 
-                for (i, value) in data.key.mouse.iter().enumerate() {
+                for (i, value) in data.keys.mouse.iter().enumerate() {
                     mouse_vector[i as usize] = *value;
                 }
 
                 mouse_vector
             })
             .map(|vector| TensorData::from(vector).convert::<B::IntElem>())
-            .map(|data| Tensor::<B, 1>::from_data(data, &self.device))
+            .map(|data| Tensor::<B, 2>::from_data(data, &self.device))
             // 1 штука, 4 параметра цвета, 200 на 200 размер
             .map(|tensor| tensor.reshape([1, 1, 2, 200]))
             // // Простая нормализация
@@ -78,17 +78,18 @@ impl<B: Backend> Batcher<MyData, FrameBatch<B>> for FrameBatcher<B> {
 
         let mouse = Tensor::cat(mouse, 0);
 
-        let inputs = Tensor::cat(vec![keys, mouse], 0).to_device(&self.device);
-        let inputs = inputs.reshape([1, 1, 3, 200]); // на всякий случай
-        todo!("Как соединить images и mouse, keys");
+        let inputs = Tensor::cat(vec![images.clone(), keys, mouse], 1).to_device(&self.device);
+        // let inputs = inputs.reshape([1, 1, 3, 200]); // на всякий случай
+        // let inputs = Tensor::cat(vec![images.clone(), inputs], 1);
+        // let inputs = inputs.reshape([1, 4, 203, 200]); // на всякий случай
 
         // Сдвинутые изображения на 1
         // TODO: Изменить?
-        let targets = inputs
+        let targets = images
             .clone()
             .iter_dim(0)
             .skip(1)
-            .chain(inputs.clone().iter_dim(0).take(1))
+            .chain(images.clone().iter_dim(0).take(1))
             .collect();
 
         let targets = Tensor::cat(targets, 0).to_device(&self.device);
