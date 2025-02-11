@@ -5,7 +5,7 @@ use std::fs::OpenOptions;
 use std::io;
 use std::sync::{Arc, Mutex};
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use serde::Serialize;
 
@@ -63,7 +63,9 @@ pub fn record() -> io::Result<()> {
             .unwrap(),
     );
 
-    loop {
+    let start_time = Instant::now();
+
+    while Instant::now().duration_since(start_time) < Duration::from_secs(6) {
         thread::sleep(Duration::from_millis(50));
 
         let k_states = key_states.lock().unwrap();
@@ -93,4 +95,6 @@ pub fn record() -> io::Result<()> {
             writer.flush().unwrap();
         }
     }
+
+    Ok(())
 }
