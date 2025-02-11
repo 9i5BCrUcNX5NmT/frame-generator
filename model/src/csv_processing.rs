@@ -1,3 +1,4 @@
+// TODO: перенести в предобработку
 use std::{fs, io};
 
 use serde::{Deserialize, Serialize};
@@ -31,8 +32,6 @@ pub fn load_keys_from_directory(dir: &str) -> io::Result<Vec<KeysRecord>> {
             }
         }
     }
-
-    dbg!(&dataset);
 
     Ok(dataset)
 }
