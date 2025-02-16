@@ -12,11 +12,11 @@ impl<B: Backend> FrameBatcher<B> {
         Self { device }
     }
 
-    fn extract_keys(&self, mydata: &Vec<MyData>) -> Tensor<B, 4> {
+    fn extract_keys(&self, mydata: &Vec<MyData>) -> Tensor<B, 2> {
         let keys = mydata
             .iter()
             .map(|data| {
-                let mut keys_vector = [0; 200];
+                let mut keys_vector = [0; 108];
 
                 for i in &data.keys.keys {
                     keys_vector[*i as usize] += 1;
@@ -26,17 +26,15 @@ impl<B: Backend> FrameBatcher<B> {
             })
             .map(|vector| TensorData::from(vector).convert::<B::IntElem>())
             .map(|data| Tensor::<B, 1>::from_data(data, &self.device))
-            // 1 штука, 4 параметра цвета, 200 на 200 размер
-            .map(|tensor| tensor.reshape([1, 1, 1, 200]))
+            .map(|tensor| tensor.reshape([1 as usize, 108]))
             // // Простая нормализация
             // .map(|tensor| tensor / 255)
             .collect();
 
-        let keys = Tensor::cat(keys, 0);
-        keys
+        Tensor::cat(keys, 0)
     }
 
-    fn extract_mouse(&self, mydata: &Vec<MyData>) -> Tensor<B, 4> {
+    fn extract_mouse(&self, mydata: &Vec<MyData>) -> Tensor<B, 3> {
         let mouse = mydata
             .iter()
             .map(|data| {
@@ -50,8 +48,7 @@ impl<B: Backend> FrameBatcher<B> {
             })
             .map(|vector| TensorData::from(vector).convert::<B::IntElem>())
             .map(|data| Tensor::<B, 2>::from_data(data, &self.device))
-            // 1 штука, 4 параметра цвета, 200 на 200 размер
-            .map(|tensor| tensor.reshape([1, 1, 2, 200]))
+            .map(|tensor| tensor.reshape([1, 2, 200]))
             // // Простая нормализация
             // .map(|tensor| tensor / 255)
             .collect();
@@ -87,7 +84,9 @@ impl<B: Backend> FrameBatcher<B> {
 
 #[derive(Clone, Debug)]
 pub struct FrameBatch<B: Backend> {
-    pub inputs: Tensor<B, 4>,
+    pub images: Tensor<B, 4>,
+    pub keys: Tensor<B, 2>,
+    pub mouse: Tensor<B, 3>,
     pub targets: Tensor<B, 4>,
 }
 
@@ -97,12 +96,15 @@ impl<B: Backend> Batcher<MyData, FrameBatch<B>> for FrameBatcher<B> {
         let keys = self.extract_keys(&mydata);
         let mouse = self.extract_mouse(&mydata);
 
-        let inputs = Tensor::cat(vec![images.clone(), keys, mouse], 1).to_device(&self.device);
-
         // Сдвинутые изображения на 1
         // TODO: Изменить?
         let targets = self.extract_targets(&images);
 
-        FrameBatch { inputs, targets }
+        FrameBatch {
+            images,
+            keys,
+            mouse,
+            targets,
+        }
     }
 }

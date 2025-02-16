@@ -1,7 +1,7 @@
 use burn::{
     nn::{
         conv::{Conv2d, Conv2dConfig},
-        Dropout, DropoutConfig, Linear, LinearConfig, Relu,
+        Dropout, DropoutConfig, Embedding, EmbeddingConfig, Linear, LinearConfig, Relu,
     },
     prelude::*,
 };
@@ -9,91 +9,48 @@ use nn::pool::{AdaptiveAvgPool2d, AdaptiveAvgPool2dConfig};
 
 #[derive(Module, Debug)]
 pub struct Model<B: Backend> {
-    linear01: Linear<B>,
-    activation01: Relu,
+    conv1: Conv2d<B>,
+    activation1: Relu,
 
-    linear11: Linear<B>,
-    activation11: Relu,
+    linear1: Linear<B>,
+    linear2: Linear<B>,
+    activation2: Relu,
 
-    // conv11: Conv2d<B>,
-    // activation11: Relu,
+    linear3: Linear<B>,
+    linear4: Linear<B>,
+    activation3: Relu,
 
-    // conv12: Conv2d<B>,
-    // activation12: Relu,
-
-    // conv13: Conv2d<B>,
-    // activation13: Relu,
-    conv21: Conv2d<B>,
-    activation21: Relu,
-
-    // conv22: Conv2d<B>,
-    // activation22: Relu,
-
-    // conv23: Conv2d<B>,
-    // activation23: Relu,
     dropout: Dropout,
     pool: AdaptiveAvgPool2d,
-    // add
-    // conv31: Conv2d<B>,
-    // activation31: Relu,
-    // conv32: Conv2d<B>,
-    // activation32: Relu,
-
-    // conv33: Conv2d<B>,
-    // activation33: Relu,
-
-    // conv34: Conv2d<B>,
-    // activation34: Relu,
-
-    // conv35: Conv2d<B>,
-    // reshape 6
-    // transpose
-    // reshape 4
-    // concat
-    linear21: Linear<B>,
 }
 
 #[derive(Config, Debug)]
 pub struct ModelConfig {
-    num_classes: usize,
+    #[config(default = "256")]
     hidden_size: usize,
     #[config(default = "0.5")]
     dropout: f64,
+    #[config(default = "128")]
+    embedding_dim: usize,
 }
 
 impl ModelConfig {
     /// Returns the initialized model.
     pub fn init<B: Backend>(&self, device: &B::Device) -> Model<B> {
         Model {
-            linear01: LinearConfig::new(3 * 200, self.hidden_size).init(device),
-            activation01: Relu,
+            conv1: Conv2dConfig::new([1, 1], [1, 1]).init(device),
+            activation1: Relu,
 
-            linear11: LinearConfig::new(self.hidden_size, self.num_classes).init(device),
-            activation11: Relu,
+            linear1: LinearConfig::new(108, self.hidden_size).init(device),
+            linear2: LinearConfig::new(self.hidden_size, self.embedding_dim).init(device),
+            activation2: Relu,
 
-            // conv11: Conv2dConfig::new([16, 3], [3, 3]).init(device),
-            // activation11: Relu,
-            // conv12: Conv2dConfig::new([32, 16], [3, 3]).init(device),
-            // activation12: Relu,
-            // conv13: Conv2dConfig::new([64, 32], [3, 3]).init(device),
-            // activation13: Relu,
-            conv21: Conv2dConfig::new([1, 1], [1, 1]).init(device),
-            activation21: Relu,
-            // conv22: Conv2dConfig::new([64, 64], [1, 1]).init(device),
-            // activation22: Relu,
-            // conv23: Conv2dConfig::new([64, 64], [1, 1]).init(device),
-            // activation23: Relu,
+            linear3: LinearConfig::new(400, self.hidden_size).init(device),
+            linear4: LinearConfig::new(self.hidden_size, self.embedding_dim).init(device),
+            activation3: Relu,
+
             dropout: DropoutConfig::new(self.dropout).init(),
-            // conv31: Conv2dConfig::new([4, 1], [3, 3]).init(device),
             pool: AdaptiveAvgPool2dConfig::new([200, 200]).init(),
-            // activation31: Relu,
-            // conv32: Conv2dConfig::new([64, 64], [3, 3]).init(device),
-            // activation32: Relu,
-            // conv33: Conv2dConfig::new([64, 64], [3, 3]).init(device),
-            // activation33: Relu,
-            // conv34: Conv2dConfig::new([64, 64], [3, 3]).init(device),
-            // activation34: Relu,
-            // conv35: Conv2dConfig::new([192, 64], [3, 3]).init(device),
         }
     }
 }
@@ -103,8 +60,13 @@ impl<B: Backend> Model<B> {
     ///   - Images [batch_size, color, height, width]
     ///   - Keys [batch_size, type, key_number]
     ///   - Output [batch_size, color, height, width]
-    pub fn forward(&self, images: Tensor<B, 4>, keys: Tensor<B, 3>) -> Tensor<B, 4> {
-        // let [batch_size, color, height, width] = inputs.dims();
+    pub fn forward(
+        &self,
+        images: Tensor<B, 4>,
+        keys: Tensor<B, 2>,
+        mouse: Tensor<B, 3>,
+    ) -> Tensor<B, 4> {
+        let [batch_size, channels, height, width] = images.dims();
 
         // // Create a channel at the second dimension.
         // let x = images.reshape([batch_size, 1, height, width]);
@@ -117,14 +79,39 @@ impl<B: Backend> Model<B> {
         // let y = inputs.reshape([batch_size, 1, height, width]);
         // println!("{:?}", inputs.dims());
 
-        let x = self.conv21.forward(images);
-        let x = self.activation21.forward(x);
+        // Обработка изображений
+        let x = self.conv1.forward(images);
+        let x = self.activation1.forward(x);
         let x = self.dropout.forward(x);
 
-        let y = self.linear01.forward(keys);
-        let y = self.activation01.forward(y);
-        let y = self.linear11.forward(y);
-        let y = self.activation11.forward(y);
+        // Обработка ключей
+        let k = self.linear1.forward(keys); // [n, 108] -> [n, 256]
+        let k = self.activation2.forward(k);
+        let k = self.linear2.forward(k); // [n, 256] -> [n, 128]
+
+        // Обработка мыши
+        let m: Tensor<B, 2> = mouse.flatten(1, 2); // [n, 2, 200] -> [n, 400]
+        let m = self.linear3.forward(m); // [n, 400] -> [n, 256]
+        let m = self.activation3.forward(m);
+        let m = self.linear4.forward(m); // [n, 256] -> [n, 128]
+
+        let embed_map = Tensor::cat(vec![k, m], 1); // [n, 256]
+
+        let [_, embedding_dim] = embed_map.dims();
+
+        let embed_map = embed_map.unsqueeze_dims::<4>(&[2, 3]); // [n, 256] -> [n, 256, 1, 1]
+        let embed_map = embed_map.expand([batch_size, embedding_dim, height, width]); // [n, 256, 1, 1] -> [n, 256, 200, 200]
+
+        for i in 0..10000 {
+            println!("embed_map: {:?}", embed_map.shape());
+        }
+
+        todo!();
+
+        // let y = self.linear01.forward(keys);
+        // let y = self.activation01.forward(y);
+        // let y = self.linear11.forward(y);
+        // let y = self.activation11.forward(y);
 
         // let x = self.conv31.forward(x);
         // let x = self.pool.forward(x);
