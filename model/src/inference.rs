@@ -27,7 +27,7 @@ pub fn infer<B: Backend>(artifact_dir: &str, device: B::Device, item: MyData) {
     // let label = item.label;
     let batcher = FrameBatcher::new(device);
     let batch = batcher.batch(vec![item]);
-    let output = model.forward(batch.inputs);
+    let output = model.forward(batch.images, batch.keys, batch.mouse);
     // let predicted = output.flatten::<1>(0, 3);
 
     // let images = images

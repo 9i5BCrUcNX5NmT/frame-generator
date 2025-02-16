@@ -1,7 +1,9 @@
+use std::{thread::sleep, time::Duration};
+
 use burn::{
     nn::{
         conv::{Conv2d, Conv2dConfig},
-        Dropout, DropoutConfig, Relu,
+        Dropout, DropoutConfig, Embedding, EmbeddingConfig, Linear, LinearConfig, Relu,
     },
     prelude::*,
 };
@@ -9,78 +11,48 @@ use nn::pool::{AdaptiveAvgPool2d, AdaptiveAvgPool2dConfig};
 
 #[derive(Module, Debug)]
 pub struct Model<B: Backend> {
-    // conv11: Conv2d<B>,
-    // activation11: Relu,
+    conv1: Conv2d<B>,
+    activation1: Relu,
 
-    // conv12: Conv2d<B>,
-    // activation12: Relu,
+    linear1: Linear<B>,
+    linear2: Linear<B>,
+    activation2: Relu,
 
-    // conv13: Conv2d<B>,
-    // activation13: Relu,
-    conv21: Conv2d<B>,
-    activation21: Relu,
+    linear3: Linear<B>,
+    linear4: Linear<B>,
+    activation3: Relu,
 
-    // conv22: Conv2d<B>,
-    // activation22: Relu,
-
-    // conv23: Conv2d<B>,
-    // activation23: Relu,
     dropout: Dropout,
-
     pool: AdaptiveAvgPool2d,
-
-    // add
-    conv31: Conv2d<B>,
-    activation31: Relu,
-    // conv32: Conv2d<B>,
-    // activation32: Relu,
-
-    // conv33: Conv2d<B>,
-    // activation33: Relu,
-
-    // conv34: Conv2d<B>,
-    // activation34: Relu,
-
-    // conv35: Conv2d<B>,
-    // reshape 6
-    // transpose
-    // reshape 4
-    // concat
 }
 
 #[derive(Config, Debug)]
 pub struct ModelConfig {
+    #[config(default = "256")]
+    hidden_size: usize,
     #[config(default = "0.5")]
     dropout: f64,
+    #[config(default = "128")]
+    embedding_dim: usize,
 }
 
 impl ModelConfig {
     /// Returns the initialized model.
     pub fn init<B: Backend>(&self, device: &B::Device) -> Model<B> {
         Model {
-            // conv11: Conv2dConfig::new([16, 3], [3, 3]).init(device),
-            // activation11: Relu,
-            // conv12: Conv2dConfig::new([32, 16], [3, 3]).init(device),
-            // activation12: Relu,
-            // conv13: Conv2dConfig::new([64, 32], [3, 3]).init(device),
-            // activation13: Relu,
-            conv21: Conv2dConfig::new([1, 32], [3, 3]).init(device),
-            activation21: Relu,
-            // conv22: Conv2dConfig::new([64, 64], [1, 1]).init(device),
-            // activation22: Relu,
-            // conv23: Conv2dConfig::new([64, 64], [1, 1]).init(device),
-            // activation23: Relu,
+            linear1: LinearConfig::new(108, self.hidden_size).init(device),
+            linear2: LinearConfig::new(self.hidden_size, self.embedding_dim).init(device),
+            activation2: Relu,
+
+            linear3: LinearConfig::new(400, self.hidden_size).init(device),
+            linear4: LinearConfig::new(self.hidden_size, self.embedding_dim).init(device),
+            activation3: Relu,
+
+            conv1: Conv2dConfig::new([256 + 4, 4], [3, 3]).init(device),
+            activation1: Relu,
+
             dropout: DropoutConfig::new(self.dropout).init(),
-            conv31: Conv2dConfig::new([32, 4], [3, 3]).init(device),
             pool: AdaptiveAvgPool2dConfig::new([200, 200]).init(),
-            activation31: Relu,
-            // conv32: Conv2dConfig::new([64, 64], [3, 3]).init(device),
-            // activation32: Relu,
-            // conv33: Conv2dConfig::new([64, 64], [3, 3]).init(device),
-            // activation33: Relu,
-            // conv34: Conv2dConfig::new([64, 64], [3, 3]).init(device),
-            // activation34: Relu,
-            // conv35: Conv2dConfig::new([192, 64], [3, 3]).init(device),
         }
     }
 }
@@ -88,9 +60,15 @@ impl ModelConfig {
 impl<B: Backend> Model<B> {
     /// # Shapes
     ///   - Images [batch_size, color, height, width]
+    ///   - Keys [batch_size, type, key_number]
     ///   - Output [batch_size, color, height, width]
-    pub fn forward(&self, inputs: Tensor<B, 4>) -> Tensor<B, 4> {
-        // let [batch_size, color, height, width] = inputs.dims();
+    pub fn forward(
+        &self,
+        images: Tensor<B, 4>,
+        keys: Tensor<B, 2>,
+        mouse: Tensor<B, 3>,
+    ) -> Tensor<B, 4> {
+        let [batch_size, channels, height, width] = images.dims();
 
         // // Create a channel at the second dimension.
         // let x = images.reshape([batch_size, 1, height, width]);
@@ -103,12 +81,44 @@ impl<B: Backend> Model<B> {
         // let y = inputs.reshape([batch_size, 1, height, width]);
         // println!("{:?}", inputs.dims());
 
-        let x = self.conv21.forward(inputs);
-        let x = self.activation21.forward(x);
+        // Обработка ключей
+        let k = self.linear1.forward(keys); // [n, 108] -> [n, hidden_size]
+        let k = self.activation2.forward(k);
+        let k = self.linear2.forward(k); // [n, hidden_size] -> [n, embed_dim]
+
+        // Обработка мыши
+        let m: Tensor<B, 2> = mouse.flatten(1, 2); // [n, 2, 200] -> [n, 400]
+        let m = self.linear3.forward(m); // [n, 400] -> [n, hidden_size]
+        let m = self.activation3.forward(m);
+        let m = self.linear4.forward(m); // [n, hidden_size] -> [n, embed_dim]
+
+        // Совмещение эмбеддингов
+        let embed_map = Tensor::cat(vec![k, m], 1); // [n, embed_dim * 2]
+
+        let [_, embedding_dim] = embed_map.dims();
+
+        let embed_map = embed_map.unsqueeze_dims::<4>(&[2, 3]); // [n, embed_dim * 2] -> [n, embed_dim * 2, 1, 1]
+        let embed_map = embed_map.expand([batch_size, embedding_dim, height, width]); // [n, embed_dim * 2, 1, 1] -> [n, embed_dim * 2, 200, 200]
+
+        // Обработка изображений
+        let x = Tensor::cat(vec![images, embed_map], 1); // [n, embed_dim * 2 + 4, 200, 200]
+        let x = self.conv1.forward(x);
+        let x = self.activation1.forward(x);
         let x = self.dropout.forward(x);
-        let x = self.conv31.forward(x);
+
         let x = self.pool.forward(x);
-        let x = self.activation31.forward(x);
+        let x = x.reshape([batch_size, channels, height, width]);
+
+        // let ;
+
+        // let y = self.linear01.forward(keys);
+        // let y = self.activation01.forward(y);
+        // let y = self.linear11.forward(y);
+        // let y = self.activation11.forward(y);
+
+        // let x = self.conv31.forward(x);
+        // let x = self.pool.forward(x);
+        // let x = self.activation31.forward(x);
 
         // let y = y.reshape([batch_size, height, width]);
 

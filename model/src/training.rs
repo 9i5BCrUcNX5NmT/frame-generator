@@ -1,7 +1,7 @@
 use crate::{
-    csv_processing::{self, load_keys_from_directory},
+    csv_processing::load_keys_from_directory,
     data::{FrameBatch, FrameBatcher},
-    images::{self, convert_images_to_image_pixel_data, load_images_from_directory},
+    images::{convert_images_to_image_pixel_data, load_images_from_directory},
     model::{Model, ModelConfig},
     types::MyData,
 };
@@ -23,9 +23,11 @@ impl<B: Backend> Model<B> {
     pub fn forward_generation(
         &self,
         inputs: Tensor<B, 4>,
+        keys: Tensor<B, 2>,
+        mouse: Tensor<B, 3>,
         targets: Tensor<B, 4>,
     ) -> RegressionOutput<B> {
-        let output = self.forward(inputs);
+        let output = self.forward(inputs, keys, mouse);
         // Какую дельту ставить? Я хз
         let loss = HuberLossConfig::new(0.5)
             .init()
@@ -48,7 +50,7 @@ impl<B: Backend> Model<B> {
 
 impl<B: AutodiffBackend> TrainStep<FrameBatch<B>, RegressionOutput<B>> for Model<B> {
     fn step(&self, batch: FrameBatch<B>) -> TrainOutput<RegressionOutput<B>> {
-        let item = self.forward_generation(batch.inputs, batch.targets);
+        let item = self.forward_generation(batch.images, batch.keys, batch.mouse, batch.targets);
 
         TrainOutput::new(self, item.loss.backward(), item)
     }
@@ -56,7 +58,7 @@ impl<B: AutodiffBackend> TrainStep<FrameBatch<B>, RegressionOutput<B>> for Model
 
 impl<B: Backend> ValidStep<FrameBatch<B>, RegressionOutput<B>> for Model<B> {
     fn step(&self, batch: FrameBatch<B>) -> RegressionOutput<B> {
-        self.forward_generation(batch.inputs, batch.targets)
+        self.forward_generation(batch.images, batch.keys, batch.mouse, batch.targets)
     }
 }
 
