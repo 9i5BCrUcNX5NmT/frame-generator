@@ -11,31 +11,8 @@ impl<B: Backend> FrameBatcher<B> {
     pub fn new(device: B::Device) -> Self {
         Self { device }
     }
-}
 
-#[derive(Clone, Debug)]
-pub struct FrameBatch<B: Backend> {
-    pub inputs: Tensor<B, 4>,
-    pub targets: Tensor<B, 4>,
-}
-
-impl<B: Backend> Batcher<MyData, FrameBatch<B>> for FrameBatcher<B> {
-    fn batch(&self, mydata: Vec<MyData>) -> FrameBatch<B> {
-        let images = mydata
-            .iter()
-            .map(|data| TensorData::from(data.image.pixels).convert::<B::IntElem>())
-            .map(|data| Tensor::<B, 3>::from_data(data, &self.device))
-            // 1 штука, 4 параметра цвета, 200 на 200 размер
-            .map(|tensor| tensor.reshape([1, 4, 200, 200]))
-            // Простая нормализация цветов
-            .map(|tensor| tensor / 255)
-            .collect();
-
-        // let inputs = Tensor::cat(inputs, 0).to_device(&self.device);
-        // let targets = Tensor::cat(inputs, 0).to_device(&self.device);
-
-        let images = Tensor::cat(images, 0).to_device(&self.device);
-
+    fn extract_keys(&self, mydata: &Vec<MyData>) -> Tensor<B, 4> {
         let keys = mydata
             .iter()
             .map(|data| {
@@ -56,7 +33,10 @@ impl<B: Backend> Batcher<MyData, FrameBatch<B>> for FrameBatcher<B> {
             .collect();
 
         let keys = Tensor::cat(keys, 0);
+        keys
+    }
 
+    fn extract_mouse(&self, mydata: &Vec<MyData>) -> Tensor<B, 4> {
         let mouse = mydata
             .iter()
             .map(|data| {
@@ -76,15 +56,10 @@ impl<B: Backend> Batcher<MyData, FrameBatch<B>> for FrameBatcher<B> {
             // .map(|tensor| tensor / 255)
             .collect();
 
-        let mouse = Tensor::cat(mouse, 0);
+        Tensor::cat(mouse, 0)
+    }
 
-        let inputs = Tensor::cat(vec![images.clone(), keys, mouse], 1).to_device(&self.device);
-        // let inputs = inputs.reshape([1, 1, 3, 200]); // на всякий случай
-        // let inputs = Tensor::cat(vec![images.clone(), inputs], 1);
-        // let inputs = inputs.reshape([1, 4, 203, 200]); // на всякий случай
-
-        // Сдвинутые изображения на 1
-        // TODO: Изменить?
+    fn extract_targets(&self, images: &Tensor<B, 4>) -> Tensor<B, 4> {
         let targets = images
             .clone()
             .iter_dim(0)
@@ -92,7 +67,41 @@ impl<B: Backend> Batcher<MyData, FrameBatch<B>> for FrameBatcher<B> {
             .chain(images.clone().iter_dim(0).take(1))
             .collect();
 
-        let targets = Tensor::cat(targets, 0).to_device(&self.device);
+        Tensor::cat(targets, 0).to_device(&self.device)
+    }
+
+    fn extract_images(&self, mydata: &Vec<MyData>) -> Tensor<B, 4> {
+        let images = mydata
+            .iter()
+            .map(|data| TensorData::from(data.image.pixels).convert::<B::IntElem>())
+            .map(|data| Tensor::<B, 3>::from_data(data, &self.device))
+            // 1 штука, 4 параметра цвета, 200 на 200 размер
+            .map(|tensor| tensor.reshape([1, 4, 200, 200]))
+            // Простая нормализация цветов
+            .map(|tensor| tensor / 255)
+            .collect();
+
+        Tensor::cat(images, 0)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct FrameBatch<B: Backend> {
+    pub inputs: Tensor<B, 4>,
+    pub targets: Tensor<B, 4>,
+}
+
+impl<B: Backend> Batcher<MyData, FrameBatch<B>> for FrameBatcher<B> {
+    fn batch(&self, mydata: Vec<MyData>) -> FrameBatch<B> {
+        let images = self.extract_images(&mydata);
+        let keys = self.extract_keys(&mydata);
+        let mouse = self.extract_mouse(&mydata);
+
+        let inputs = Tensor::cat(vec![images.clone(), keys, mouse], 1).to_device(&self.device);
+
+        // Сдвинутые изображения на 1
+        // TODO: Изменить?
+        let targets = self.extract_targets(&images);
 
         FrameBatch { inputs, targets }
     }
