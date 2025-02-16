@@ -38,7 +38,7 @@ impl ModelConfig {
     /// Returns the initialized model.
     pub fn init<B: Backend>(&self, device: &B::Device) -> Model<B> {
         Model {
-            conv1: Conv2dConfig::new([1, 1], [1, 1]).init(device),
+            conv1: Conv2dConfig::new([3, 3], [3, 3]).init(device),
             activation1: Relu,
 
             linear1: LinearConfig::new(108, self.hidden_size).init(device),
@@ -79,11 +79,6 @@ impl<B: Backend> Model<B> {
         // let y = inputs.reshape([batch_size, 1, height, width]);
         // println!("{:?}", inputs.dims());
 
-        // Обработка изображений
-        let x = self.conv1.forward(images);
-        let x = self.activation1.forward(x);
-        let x = self.dropout.forward(x);
-
         // Обработка ключей
         let k = self.linear1.forward(keys); // [n, 108] -> [n, 256]
         let k = self.activation2.forward(k);
@@ -95,6 +90,7 @@ impl<B: Backend> Model<B> {
         let m = self.activation3.forward(m);
         let m = self.linear4.forward(m); // [n, 256] -> [n, 128]
 
+        // Совмещение эмбеддингов
         let embed_map = Tensor::cat(vec![k, m], 1); // [n, 256]
 
         let [_, embedding_dim] = embed_map.dims();
@@ -102,9 +98,11 @@ impl<B: Backend> Model<B> {
         let embed_map = embed_map.unsqueeze_dims::<4>(&[2, 3]); // [n, 256] -> [n, 256, 1, 1]
         let embed_map = embed_map.expand([batch_size, embedding_dim, height, width]); // [n, 256, 1, 1] -> [n, 256, 200, 200]
 
-        for i in 0..10000 {
-            println!("embed_map: {:?}", embed_map.shape());
-        }
+        // Обработка изображений
+        let x = Tensor::cat(vec![images, embed_map], 1); // [n, 260, 200, 200]
+        let x = self.conv1.forward(x);
+        let x = self.activation1.forward(x);
+        let x = self.dropout.forward(x);
 
         todo!();
 
