@@ -1,3 +1,5 @@
+use std::{thread::sleep, time::Duration};
+
 use burn::{
     nn::{
         conv::{Conv2d, Conv2dConfig},
@@ -38,9 +40,6 @@ impl ModelConfig {
     /// Returns the initialized model.
     pub fn init<B: Backend>(&self, device: &B::Device) -> Model<B> {
         Model {
-            conv1: Conv2dConfig::new([3, 3], [3, 3]).init(device),
-            activation1: Relu,
-
             linear1: LinearConfig::new(108, self.hidden_size).init(device),
             linear2: LinearConfig::new(self.hidden_size, self.embedding_dim).init(device),
             activation2: Relu,
@@ -48,6 +47,9 @@ impl ModelConfig {
             linear3: LinearConfig::new(400, self.hidden_size).init(device),
             linear4: LinearConfig::new(self.hidden_size, self.embedding_dim).init(device),
             activation3: Relu,
+
+            conv1: Conv2dConfig::new([256 + 4, 4], [3, 3]).init(device),
+            activation1: Relu,
 
             dropout: DropoutConfig::new(self.dropout).init(),
             pool: AdaptiveAvgPool2dConfig::new([200, 200]).init(),
@@ -80,31 +82,34 @@ impl<B: Backend> Model<B> {
         // println!("{:?}", inputs.dims());
 
         // Обработка ключей
-        let k = self.linear1.forward(keys); // [n, 108] -> [n, 256]
+        let k = self.linear1.forward(keys); // [n, 108] -> [n, hidden_size]
         let k = self.activation2.forward(k);
-        let k = self.linear2.forward(k); // [n, 256] -> [n, 128]
+        let k = self.linear2.forward(k); // [n, hidden_size] -> [n, embed_dim]
 
         // Обработка мыши
         let m: Tensor<B, 2> = mouse.flatten(1, 2); // [n, 2, 200] -> [n, 400]
-        let m = self.linear3.forward(m); // [n, 400] -> [n, 256]
+        let m = self.linear3.forward(m); // [n, 400] -> [n, hidden_size]
         let m = self.activation3.forward(m);
-        let m = self.linear4.forward(m); // [n, 256] -> [n, 128]
+        let m = self.linear4.forward(m); // [n, hidden_size] -> [n, embed_dim]
 
         // Совмещение эмбеддингов
-        let embed_map = Tensor::cat(vec![k, m], 1); // [n, 256]
+        let embed_map = Tensor::cat(vec![k, m], 1); // [n, embed_dim * 2]
 
         let [_, embedding_dim] = embed_map.dims();
 
-        let embed_map = embed_map.unsqueeze_dims::<4>(&[2, 3]); // [n, 256] -> [n, 256, 1, 1]
-        let embed_map = embed_map.expand([batch_size, embedding_dim, height, width]); // [n, 256, 1, 1] -> [n, 256, 200, 200]
+        let embed_map = embed_map.unsqueeze_dims::<4>(&[2, 3]); // [n, embed_dim * 2] -> [n, embed_dim * 2, 1, 1]
+        let embed_map = embed_map.expand([batch_size, embedding_dim, height, width]); // [n, embed_dim * 2, 1, 1] -> [n, embed_dim * 2, 200, 200]
 
         // Обработка изображений
-        let x = Tensor::cat(vec![images, embed_map], 1); // [n, 260, 200, 200]
+        let x = Tensor::cat(vec![images, embed_map], 1); // [n, embed_dim * 2 + 4, 200, 200]
         let x = self.conv1.forward(x);
         let x = self.activation1.forward(x);
         let x = self.dropout.forward(x);
 
-        todo!();
+        let x = self.pool.forward(x);
+        let x = x.reshape([batch_size, channels, height, width]);
+
+        // let ;
 
         // let y = self.linear01.forward(keys);
         // let y = self.activation01.forward(y);
