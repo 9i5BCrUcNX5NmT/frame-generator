@@ -32,7 +32,7 @@ pub struct ModelConfig {
     hidden_size: usize,
     #[config(default = "0.5")]
     dropout: f64,
-    #[config(default = "128")]
+    #[config(default = "12")]
     embedding_dim: usize,
 }
 
@@ -48,7 +48,7 @@ impl ModelConfig {
             linear4: LinearConfig::new(self.hidden_size, self.embedding_dim).init(device),
             activation3: Relu,
 
-            conv1: Conv2dConfig::new([256 + 4, 4], [3, 3]).init(device),
+            conv1: Conv2dConfig::new([self.embedding_dim * 2 + 4, 4], [3, 3]).init(device),
             activation1: Relu,
 
             dropout: DropoutConfig::new(self.dropout).init(),
