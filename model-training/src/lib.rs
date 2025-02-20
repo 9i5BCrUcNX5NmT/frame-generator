@@ -3,5 +3,5 @@ mod data;
 mod images;
 pub mod inference;
 mod model;
-mod training;
+pub mod training;
 mod types;

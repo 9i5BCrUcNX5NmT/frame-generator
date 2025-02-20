@@ -14,7 +14,7 @@ use crate::{
     data::FrameBatcher,
     images::{
         self, convert_image_pixel_data_to_images, convert_images_to_image_pixel_data,
-        load_images_from_directory, ImageData, ImagePixelData,
+        load_images_from_directory, ImagePixelData,
     },
     training::TrainingConfig,
     types::MyData,
