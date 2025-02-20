@@ -74,22 +74,17 @@ pub fn run(artifact_dir: &str, image_path: &str) {
     let device = burn::backend::wgpu::WgpuDevice::default();
 
     // TODO: хз
-    let image_path = Path::new(image_path).to_path_buf();
-    dbg!(-2);
-    let image_data = vec![ImageData { image_path }];
-    dbg!(-1);
-    let image_pixel_data = convert_images_to_image_pixel_data(image_data)[0].clone();
-    dbg!(0);
+    // let image_path = Path::new(image_path).to_path_buf();
+    let image_data = load_images_from_directory(image_path).unwrap();
+    let image_pixel_data = convert_images_to_image_pixel_data(image_data);
 
     let item = MyData {
-        image: image_pixel_data,
+        image: image_pixel_data[0],
         keys: KeysRecord {
             keys: vec![],
             mouse: vec![[100, 100]],
         },
     };
-
-    dbg!(1);
 
     crate::inference::infer::<MyBackend>(artifact_dir, device.clone(), item);
 }

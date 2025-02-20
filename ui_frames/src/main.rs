@@ -1,3 +1,3 @@
 fn main() {
-    model_training::inference::run(&"tmp/test", "../data/images/test/");
+    model_training::inference::run(&"model-training/tmp/test", "data/images/test");
 }

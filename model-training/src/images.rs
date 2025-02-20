@@ -33,7 +33,7 @@ pub fn save_image(image: &DynamicImage, output_path: &Path) {
     image.save(output_path).expect("Failed to save image");
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct ImagePixelData {
     pub pixels: [[[u8; 200]; 200]; 4],
 }
