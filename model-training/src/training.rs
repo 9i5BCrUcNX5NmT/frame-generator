@@ -6,6 +6,7 @@ use crate::{
     types::MyData,
 };
 use burn::{
+    backend::{Autodiff, Wgpu},
     data::{dataloader::DataLoaderBuilder, dataset::InMemDataset},
     optim::AdamConfig,
     prelude::*,
@@ -66,7 +67,7 @@ impl<B: Backend> ValidStep<FrameBatch<B>, RegressionOutput<B>> for Model<B> {
 pub struct TrainingConfig {
     pub model: ModelConfig,
     pub optimizer: AdamConfig,
-    #[config(default = 10)]
+    #[config(default = 100)]
     pub num_epochs: usize,
     #[config(default = 64)]
     pub batch_size: usize,
@@ -160,4 +161,19 @@ pub fn train<B: AutodiffBackend>(artifact_dir: &str, config: TrainingConfig, dev
     model_trained
         .save_file(format!("{artifact_dir}/model"), &CompactRecorder::new())
         .expect("Trained model should be saved successfully");
+}
+
+pub fn run() {
+    pub fn training() {
+        type MyBackend = Wgpu<f32, i32>;
+        type MyAutodiffBackend = Autodiff<MyBackend>;
+
+        let device = burn::backend::wgpu::WgpuDevice::default();
+        let artifact_dir = "tmp/test";
+        crate::training::train::<MyAutodiffBackend>(
+            artifact_dir,
+            TrainingConfig::new(ModelConfig::new(), AdamConfig::new()),
+            device.clone(),
+        );
+    }
 }

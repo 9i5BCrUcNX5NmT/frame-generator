@@ -1,9 +1,7 @@
-use std::{thread::sleep, time::Duration};
-
 use burn::{
     nn::{
         conv::{Conv2d, Conv2dConfig},
-        Dropout, DropoutConfig, Embedding, EmbeddingConfig, Linear, LinearConfig, Relu,
+        Dropout, DropoutConfig, Linear, LinearConfig, Relu,
     },
     prelude::*,
 };
@@ -32,7 +30,7 @@ pub struct ModelConfig {
     hidden_size: usize,
     #[config(default = "0.5")]
     dropout: f64,
-    #[config(default = "12")]
+    #[config(default = "6")]
     embedding_dim: usize,
 }
 
