@@ -6,6 +6,7 @@ use crate::{
     types::MyData,
 };
 use burn::{
+    backend::{Autodiff, Wgpu},
     data::{dataloader::DataLoaderBuilder, dataset::InMemDataset},
     optim::AdamConfig,
     prelude::*,
@@ -63,10 +64,10 @@ impl<B: Backend> ValidStep<FrameBatch<B>, RegressionOutput<B>> for Model<B> {
 }
 
 #[derive(Config)]
-pub struct TrainingConfig {
+pub(crate) struct TrainingConfig {
     pub model: ModelConfig,
     pub optimizer: AdamConfig,
-    #[config(default = 10)]
+    #[config(default = 100)]
     pub num_epochs: usize,
     #[config(default = 64)]
     pub batch_size: usize,
@@ -84,7 +85,7 @@ fn create_artifact_dir(artifact_dir: &str) {
     std::fs::create_dir_all(artifact_dir).ok();
 }
 
-pub fn train<B: AutodiffBackend>(artifact_dir: &str, config: TrainingConfig, device: B::Device) {
+fn train<B: AutodiffBackend>(artifact_dir: &str, config: TrainingConfig, device: B::Device) {
     create_artifact_dir(artifact_dir);
     config
         .save(format!("{artifact_dir}/config.json"))
@@ -92,15 +93,15 @@ pub fn train<B: AutodiffBackend>(artifact_dir: &str, config: TrainingConfig, dev
 
     B::seed(config.seed);
 
-    let train_dir = "../data/images/train";
-    let test_dir = "../data/images/test";
+    let train_dir = "data/images/train";
+    let test_dir = "data/images/test";
 
     let train_images =
         convert_images_to_image_pixel_data(load_images_from_directory(train_dir).unwrap());
     let test_images =
         convert_images_to_image_pixel_data(load_images_from_directory(test_dir).unwrap());
 
-    let keys = load_keys_from_directory("../data/keys").unwrap();
+    let keys = load_keys_from_directory("data/keys").unwrap();
 
     // TODO: Убрать путаницу с порядком
     let test_keys = keys[..test_images.len()].to_vec();
@@ -160,4 +161,18 @@ pub fn train<B: AutodiffBackend>(artifact_dir: &str, config: TrainingConfig, dev
     model_trained
         .save_file(format!("{artifact_dir}/model"), &CompactRecorder::new())
         .expect("Trained model should be saved successfully");
+}
+
+pub fn run() {
+    type MyBackend = Wgpu<f32, i32>;
+    type MyAutodiffBackend = Autodiff<MyBackend>;
+
+    let device = burn::backend::wgpu::WgpuDevice::default();
+    let artifact_dir = "tmp/test";
+
+    crate::training::train::<MyAutodiffBackend>(
+        artifact_dir,
+        TrainingConfig::new(ModelConfig::new(), AdamConfig::new()),
+        device.clone(),
+    );
 }

@@ -1,6 +1,7 @@
 use std::{fs, path::Path};
 
 use burn::{
+    backend::Wgpu,
     config::Config,
     data::dataloader::batcher::Batcher,
     module::Module,
@@ -9,13 +10,17 @@ use burn::{
 };
 
 use crate::{
+    csv_processing::KeysRecord,
     data::FrameBatcher,
-    images::{self, convert_image_pixel_data_to_images, ImagePixelData},
+    images::{
+        self, convert_image_pixel_data_to_images, convert_images_to_image_pixel_data,
+        load_images_from_directory, ImagePixelData,
+    },
     training::TrainingConfig,
     types::MyData,
 };
 
-pub fn infer<B: Backend>(artifact_dir: &str, device: B::Device, item: MyData) {
+fn infer<B: Backend>(artifact_dir: &str, device: B::Device, item: MyData) {
     let config = TrainingConfig::load(format!("{artifact_dir}/config.json"))
         .expect("Config should exist for the model");
     let record = CompactRecorder::new()
@@ -24,21 +29,9 @@ pub fn infer<B: Backend>(artifact_dir: &str, device: B::Device, item: MyData) {
 
     let model = config.model.init::<B>(&device).load_record(record);
 
-    // let label = item.label;
     let batcher = FrameBatcher::new(device);
     let batch = batcher.batch(vec![item]);
     let output = model.forward(batch.images, batch.keys, batch.mouse);
-    // let predicted = output.flatten::<1>(0, 3);
-
-    // let images = images
-    //         .iter()
-    //         .map(|image| TensorData::from(image.pixels).convert::<B::IntElem>())
-    //         .map(|data| Tensor::<B, 3>::from_data(data, &self.device))
-    //         // 1 штука, 4 параметра цвета, 200 на 200 размер
-    //         .map(|tensor| tensor.reshape([1, 4, 200, 200]))
-    //         // Простая нормализация
-    //         .map(|tensor| tensor / 255)
-    //         .collect();
 
     let images_data: Vec<ImagePixelData> = output
         .iter_dim(0)
@@ -74,4 +67,24 @@ pub fn infer<B: Backend>(artifact_dir: &str, device: B::Device, item: MyData) {
     images::save_image(&images[0], &output_dir.join(format!("image.png")));
 
     // println!("Predicted {} ", output);
+}
+
+pub fn run(artifact_dir: &str, image_path: &str) {
+    type MyBackend = Wgpu<f32, i32>;
+    let device = burn::backend::wgpu::WgpuDevice::default();
+
+    // TODO: хз
+    // let image_path = Path::new(image_path).to_path_buf();
+    let image_data = load_images_from_directory(image_path).unwrap();
+    let image_pixel_data = convert_images_to_image_pixel_data(image_data);
+
+    let item = MyData {
+        image: image_pixel_data[0],
+        keys: KeysRecord {
+            keys: vec![],
+            mouse: vec![[100, 100]],
+        },
+    };
+
+    crate::inference::infer::<MyBackend>(artifact_dir, device.clone(), item);
 }

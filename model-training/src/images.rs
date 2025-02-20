@@ -6,7 +6,7 @@ use std::{
 use image::{DynamicImage, GenericImageView, Rgba, RgbaImage};
 
 pub struct ImageData {
-    image_path: PathBuf,
+    pub image_path: PathBuf,
 }
 
 pub fn load_images_from_directory(dir: &str) -> io::Result<Vec<ImageData>> {
@@ -29,15 +29,11 @@ fn load_image(image_data: &ImageData) -> DynamicImage {
     image::open(&image_data.image_path).expect("Failed to open image")
 }
 
-fn resize_image(image: &DynamicImage, width: u32, height: u32) -> DynamicImage {
-    image.resize_exact(width, height, image::imageops::FilterType::Lanczos3)
-}
-
 pub fn save_image(image: &DynamicImage, output_path: &Path) {
     image.save(output_path).expect("Failed to save image");
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct ImagePixelData {
     pub pixels: [[[u8; 200]; 200]; 4],
 }
