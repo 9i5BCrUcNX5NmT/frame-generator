@@ -1,8 +1,8 @@
 use iced::keyboard::{on_key_press, Key, Modifiers};
-use iced::widget::{button, column, container, mouse_area, row, text};
-use iced::Length::{self, Fill};
+use iced::widget::{button, column, container, image, mouse_area, text};
+use iced::Length;
 use iced::{Element, Point, Subscription, Theme};
-use utils::key_to_string;
+use utils::{generate_frame, key_to_string};
 
 mod utils;
 
@@ -10,36 +10,32 @@ mod utils;
 enum Message {
     Key(String),
     Mouse(Point<f32>),
+    ReloadImage,
 }
 
 #[derive(Default)]
 struct State {
     pub pressed_key: String,
     pub mouse_position: String,
+    pub image_path: String,
 }
 
 fn view(state: &State) -> Element<Message> {
     let content = column![
         button(text(state.pressed_key.clone())),
         button(text(state.mouse_position.clone())),
+        image(&state.image_path),
+        button(text("Генерация")).on_press(Message::ReloadImage)
     ]
     .spacing(20);
 
-    let mouse_area = mouse_area(
+    mouse_area(
         container(content)
-            .width(Length::Fill)
-            .height(Length::Fill)
             .center_x(Length::Fill)
             .center_y(Length::Fill),
     )
-    .on_move(|point| Message::Mouse(point));
-
-    container(mouse_area)
-        .width(Length::Fill)
-        .height(Length::Fill)
-        .center_x(Length::Fill)
-        .center_y(Length::Fill)
-        .into()
+    .on_move(|point| Message::Mouse(point))
+    .into()
 }
 
 fn capture_key(key: Key, _modifiers: Modifiers) -> Option<Message> {
@@ -60,15 +56,19 @@ fn update(state: &mut State, message: Message) {
     match message {
         Message::Key(key) => state.pressed_key = key,
         Message::Mouse(point) => state.mouse_position = point.to_string(),
+        Message::ReloadImage => {
+            generate_frame("tmp/test/output");
+            state.image_path = "tmp/test/output/image.png".to_string();
+        }
     };
 }
 
-fn theme(state: &State) -> Theme {
+fn theme(_state: &State) -> Theme {
     Theme::Moonfly
 }
 
 pub fn main() -> iced::Result {
-    iced::application("A cool application", update, view)
+    iced::application("Генерация |>_<|", update, view)
         .theme(theme)
         .subscription(keyboard_subscription)
         .run()

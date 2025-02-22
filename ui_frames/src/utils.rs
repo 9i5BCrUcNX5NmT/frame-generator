@@ -313,3 +313,7 @@ pub fn key_to_string(named: iced::keyboard::key::Named) -> String {
         iced::keyboard::key::Named::F35 => "F35".to_string(),
     }
 }
+
+pub fn generate_frame(image_path: &str) {
+    model_training::inference::run("tmp/test", image_path);
+}
