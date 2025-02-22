@@ -1,6 +1,6 @@
 use burn::{data::dataloader::batcher::Batcher, prelude::*};
 
-use crate::{csv_processing::KeysRecord, images::ImagePixelData, types::MyData};
+use crate::types::MyData;
 
 #[derive(Clone)]
 pub struct FrameBatcher<B: Backend> {
