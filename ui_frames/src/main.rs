@@ -17,14 +17,17 @@ enum Message {
 struct State {
     pub pressed_key: String,
     pub mouse_position: String,
-    pub image_path: String,
+    pub image: Option<image::Handle>,
 }
 
 fn view(state: &State) -> Element<Message> {
     let content = column![
         button(text(state.pressed_key.clone())),
         button(text(state.mouse_position.clone())),
-        image(&state.image_path),
+        match &state.image {
+            Some(image_handle) => image(image_handle),
+            None => image(""),
+        },
         button(text("Генерация")).on_press(Message::ReloadImage)
     ]
     .spacing(20);
@@ -57,8 +60,7 @@ fn update(state: &mut State, message: Message) {
         Message::Key(key) => state.pressed_key = key,
         Message::Mouse(point) => state.mouse_position = point.to_string(),
         Message::ReloadImage => {
-            generate_frame("tmp/test/output");
-            state.image_path = "tmp/test/output/image.png".to_string();
+            state.image = Some(generate_frame());
         }
     };
 }

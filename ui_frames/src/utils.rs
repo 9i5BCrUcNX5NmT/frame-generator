@@ -1,3 +1,5 @@
+use iced::widget::image;
+
 pub fn key_to_string(named: iced::keyboard::key::Named) -> String {
     match named {
         iced::keyboard::key::Named::Alt => "Alt".to_string(),
@@ -314,6 +316,8 @@ pub fn key_to_string(named: iced::keyboard::key::Named) -> String {
     }
 }
 
-pub fn generate_frame(image_path: &str) {
-    model_training::inference::run("tmp/test", image_path);
+pub fn generate_frame() -> image::Handle {
+    let image = model_training::inference::generate()[0].clone();
+
+    image::Handle::from_rgba(200, 200, image.into_bytes())
 }

@@ -8,6 +8,7 @@ use burn::{
     prelude::Backend,
     record::{CompactRecorder, Recorder},
 };
+use image::DynamicImage;
 
 use crate::{
     csv_processing::KeysRecord,
@@ -20,7 +21,7 @@ use crate::{
     types::MyData,
 };
 
-fn infer<B: Backend>(artifact_dir: &str, device: B::Device, item: MyData) {
+fn infer<B: Backend>(artifact_dir: &str, device: B::Device, item: MyData) -> Vec<DynamicImage> {
     let config = TrainingConfig::load(format!("{artifact_dir}/config.json"))
         .expect("Config should exist for the model");
     let record = CompactRecorder::new()
@@ -54,22 +55,29 @@ fn infer<B: Backend>(artifact_dir: &str, device: B::Device, item: MyData) {
             }
 
             ImagePixelData { pixels }
+            // pixels
+            // vector.iter().map(|v| *v as u8).collect::<Vec<u8>>()
         })
         .collect();
 
     let images = convert_image_pixel_data_to_images(images_data);
 
-    // Создаем выходную директорию, если она не существует
-    let output_str = format!("{artifact_dir}/output");
-    let output_dir = Path::new(&output_str);
-    fs::create_dir_all(output_dir).unwrap();
+    // // Создаем выходную директорию, если она не существует
+    // let output_str = format!("{artifact_dir}/output");
+    // let output_dir = Path::new(&output_str);
+    // fs::create_dir_all(output_dir).unwrap();
 
-    images::save_image(&images[0], &output_dir.join(format!("image.png")));
+    // images::save_image(&images[0], &output_dir.join(format!("image.png")));
 
     // println!("Predicted {} ", output);
+
+    images
 }
 
-pub fn run(artifact_dir: &str, image_path: &str) {
+pub fn generate() -> Vec<DynamicImage> {
+    let artifact_dir = "tmp/test";
+    let image_path = "tmp/test/output";
+
     type MyBackend = Wgpu<f32, i32>;
     let device = burn::backend::wgpu::WgpuDevice::default();
 
@@ -86,5 +94,7 @@ pub fn run(artifact_dir: &str, image_path: &str) {
         },
     };
 
-    crate::inference::infer::<MyBackend>(artifact_dir, device.clone(), item);
+    let image = crate::inference::infer::<MyBackend>(artifact_dir, device.clone(), item);
+
+    image
 }
