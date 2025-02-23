@@ -1,5 +1,5 @@
 use ::image::{open, DynamicImage, GenericImage, Rgba};
-use iced::widget::image;
+use iced::{widget::image, Point};
 
 pub fn key_to_string(named: iced::keyboard::key::Named) -> String {
     match named {
@@ -317,7 +317,11 @@ pub fn key_to_string(named: iced::keyboard::key::Named) -> String {
     }
 }
 
-pub fn generate_frame(image_handle: &image::Handle) -> image::Handle {
+pub fn generate_frame(
+    image_handle: &image::Handle,
+    keys: Vec<String>,
+    mouse: Vec<Point>,
+) -> image::Handle {
     let current_image = match image_handle {
         image::Handle::Path(id, path_buf) => open(path_buf).expect("Failed to open image"),
         image::Handle::Bytes(id, bytes) => todo!(),
@@ -345,7 +349,12 @@ pub fn generate_frame(image_handle: &image::Handle) -> image::Handle {
         }
     };
 
-    let image = model_training::inference::generate(&current_image);
+    let mouse = mouse
+        .iter()
+        .map(|p| [(p.x * 2.0) as i32, (p.y * 2.0) as i32]) // 0.0, 0.5, 1.0, 1.5 ... => 0, 1, 2, 3 ...
+        .collect();
+
+    let image = model_training::inference::generate(&current_image, keys, mouse);
 
     image::Handle::from_rgba(200, 200, image.into_bytes())
 }

@@ -9,7 +9,7 @@ use burn::{
 use image::DynamicImage;
 
 use crate::{
-    csv_processing::KeysRecord,
+    csv_processing::{key_to_num, KeysRecord},
     data::FrameBatcher,
     images::{convert_image_pixel_data_to_images, ImagePixelData},
     training::TrainingConfig,
@@ -69,7 +69,11 @@ fn infer<B: Backend>(artifact_dir: &str, device: B::Device, item: MyData) -> Vec
     images
 }
 
-pub fn generate(current_image: &DynamicImage) -> DynamicImage {
+pub fn generate(
+    current_image: &DynamicImage,
+    keys: Vec<String>,
+    mouse: Vec<[i32; 2]>,
+) -> DynamicImage {
     let artifact_dir = "tmp/test";
     // let image_path = "tmp/test/output";
 
@@ -81,12 +85,18 @@ pub fn generate(current_image: &DynamicImage) -> DynamicImage {
     // let image_data = load_images_from_directory(image_path).unwrap();
     let image_pixel_data = ImagePixelData::from_image(current_image);
 
+    dbg!(&keys);
+
+    let keys = keys
+        .iter()
+        .filter(|key| !key.is_empty())
+        .map(|key| key.to_lowercase())
+        .map(|key| key_to_num(&key))
+        .collect();
+
     let item = MyData {
         image: image_pixel_data,
-        keys: KeysRecord {
-            keys: vec![],
-            mouse: vec![[100, 100]],
-        },
+        keys: KeysRecord { keys, mouse },
     };
 
     let next_image =
