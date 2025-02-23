@@ -1,5 +1,3 @@
-use std::{fs, path::Path};
-
 use burn::{
     backend::Wgpu,
     config::Config,
@@ -11,12 +9,9 @@ use burn::{
 use image::DynamicImage;
 
 use crate::{
-    csv_processing::KeysRecord,
+    csv_processing::{key_to_num, KeysRecord},
     data::FrameBatcher,
-    images::{
-        self, convert_image_pixel_data_to_images, convert_images_to_image_pixel_data,
-        load_images_from_directory, ImagePixelData,
-    },
+    images::{convert_image_pixel_data_to_images, ImagePixelData},
     training::TrainingConfig,
     types::MyData,
 };
@@ -74,27 +69,36 @@ fn infer<B: Backend>(artifact_dir: &str, device: B::Device, item: MyData) -> Vec
     images
 }
 
-pub fn generate() -> Vec<DynamicImage> {
+pub fn generate(
+    current_image: &DynamicImage,
+    keys: Vec<String>,
+    mouse: Vec<[i32; 2]>,
+) -> DynamicImage {
     let artifact_dir = "tmp/test";
-    let image_path = "tmp/test/output";
+    // let image_path = "tmp/test/output";
 
     type MyBackend = Wgpu<f32, i32>;
     let device = burn::backend::wgpu::WgpuDevice::default();
 
     // TODO: хз
     // let image_path = Path::new(image_path).to_path_buf();
-    let image_data = load_images_from_directory(image_path).unwrap();
-    let image_pixel_data = convert_images_to_image_pixel_data(image_data);
+    // let image_data = load_images_from_directory(image_path).unwrap();
+    let image_pixel_data = ImagePixelData::from_image(current_image);
+
+    let keys = keys
+        .iter()
+        .filter(|key| !key.is_empty())
+        .map(|key| key.to_lowercase())
+        .map(|key| key_to_num(&key))
+        .collect();
 
     let item = MyData {
-        image: image_pixel_data[0],
-        keys: KeysRecord {
-            keys: vec![],
-            mouse: vec![[100, 100]],
-        },
+        image: image_pixel_data,
+        keys: KeysRecord { keys, mouse },
     };
 
-    let image = crate::inference::infer::<MyBackend>(artifact_dir, device.clone(), item);
+    let next_image =
+        crate::inference::infer::<MyBackend>(artifact_dir, device.clone(), item)[0].clone();
 
-    image
+    next_image
 }

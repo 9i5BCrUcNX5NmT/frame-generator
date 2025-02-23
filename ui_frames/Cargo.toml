@@ -6,4 +6,5 @@ edition = "2021"
 [dependencies]
 burn = { version = "0.16.0", default-features = false }
 iced = { version = "0.13.1", features = ["image"] }
+image = "0.25.5"
 model-training = { path = "../model-training" }

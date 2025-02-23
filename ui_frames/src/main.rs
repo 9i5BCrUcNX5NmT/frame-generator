@@ -16,14 +16,14 @@ enum Message {
 #[derive(Default)]
 struct State {
     pub pressed_key: String,
-    pub mouse_position: String,
+    pub mouse_position: Point<f32>,
     pub image: Option<image::Handle>,
 }
 
 fn view(state: &State) -> Element<Message> {
     let content = column![
         button(text(state.pressed_key.clone())),
-        button(text(state.mouse_position.clone())),
+        button(text(format!("{}", state.mouse_position.clone()))),
         match &state.image {
             Some(image_handle) => image(image_handle),
             None => image(""),
@@ -58,9 +58,19 @@ fn keyboard_subscription(_state: &State) -> Subscription<Message> {
 fn update(state: &mut State, message: Message) {
     match message {
         Message::Key(key) => state.pressed_key = key,
-        Message::Mouse(point) => state.mouse_position = point.to_string(),
+        Message::Mouse(point) => state.mouse_position = point,
         Message::ReloadImage => {
-            state.image = Some(generate_frame());
+            let keys = vec![state.pressed_key.clone()];
+            let mouse = vec![state.mouse_position];
+
+            state.image = Some(match &state.image {
+                Some(image_handle) => generate_frame(image_handle, keys, mouse),
+                None => generate_frame(
+                    &image::Handle::from_path("tmp/test/output/image.png"),
+                    keys,
+                    mouse,
+                ),
+            })
         }
     };
 }
