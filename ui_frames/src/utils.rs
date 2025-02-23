@@ -1,3 +1,4 @@
+use ::image::{open, DynamicImage, GenericImage, Rgba};
 use iced::widget::image;
 
 pub fn key_to_string(named: iced::keyboard::key::Named) -> String {
@@ -316,8 +317,35 @@ pub fn key_to_string(named: iced::keyboard::key::Named) -> String {
     }
 }
 
-pub fn generate_frame() -> image::Handle {
-    let image = model_training::inference::generate()[0].clone();
+pub fn generate_frame(image_handle: &image::Handle) -> image::Handle {
+    let current_image = match image_handle {
+        image::Handle::Path(id, path_buf) => open(path_buf).expect("Failed to open image"),
+        image::Handle::Bytes(id, bytes) => todo!(),
+        image::Handle::Rgba {
+            id,
+            width,
+            height,
+            pixels,
+        } => {
+            let mut image = DynamicImage::new_rgba8(*width, *height);
+
+            let mut t = 0;
+
+            for i in 0..*height {
+                for j in 0..*width {
+                    let pixel = Rgba([pixels[t], pixels[t + 1], pixels[t + 2], pixels[t + 3]]);
+
+                    t += 4;
+
+                    image.put_pixel(j as u32, i as u32, pixel);
+                }
+            }
+
+            image
+        }
+    };
+
+    let image = model_training::inference::generate(&current_image);
 
     image::Handle::from_rgba(200, 200, image.into_bytes())
 }

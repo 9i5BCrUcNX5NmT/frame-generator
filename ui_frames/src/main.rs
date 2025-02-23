@@ -59,9 +59,14 @@ fn update(state: &mut State, message: Message) {
     match message {
         Message::Key(key) => state.pressed_key = key,
         Message::Mouse(point) => state.mouse_position = point.to_string(),
-        Message::ReloadImage => {
-            state.image = Some(generate_frame());
-        }
+        Message::ReloadImage => match &state.image {
+            Some(image_handle) => state.image = Some(generate_frame(image_handle)),
+            None => {
+                state.image = Some(generate_frame(&image::Handle::from_path(
+                    "tmp/test/output/image.png",
+                )))
+            }
+        },
     };
 }
 
