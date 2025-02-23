@@ -85,8 +85,6 @@ pub fn generate(
     // let image_data = load_images_from_directory(image_path).unwrap();
     let image_pixel_data = ImagePixelData::from_image(current_image);
 
-    dbg!(&keys);
-
     let keys = keys
         .iter()
         .filter(|key| !key.is_empty())
