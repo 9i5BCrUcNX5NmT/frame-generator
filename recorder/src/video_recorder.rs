@@ -1,8 +1,10 @@
+use std::error::Error;
 use std::io::{self, Write};
+use std::sync::{Arc, Mutex};
 use std::thread::{self, sleep};
 use std::time::{Duration, Instant};
 
-use rdev::{listen, EventType};
+use rdev::{listen, Event, EventType};
 use windows_capture::capture::{Context, GraphicsCaptureApiHandler};
 use windows_capture::encoder::{
     AudioSettingsBuilder, ContainerSettingsBuilder, VideoEncoder, VideoSettingsBuilder,
@@ -96,30 +98,37 @@ impl GraphicsCaptureApiHandler for Capture {
     }
 }
 
-pub fn record() {
-    // Gets the foreground window, refer to the docs for other capture items
-    let primary_monitor = Monitor::primary().expect("There is no primary monitor");
+pub struct VideoRecorder {
+    capture: windows_capture::capture::CaptureControl<Capture, Box<dyn Error + Send + Sync>>,
+}
 
-    let settings = Settings::new(
-        // Item to capture
-        primary_monitor,
-        // Capture cursor settings
-        CursorCaptureSettings::Default,
-        // Draw border settings
-        DrawBorderSettings::Default,
-        // The desired color format for the captured frame.
-        ColorFormat::Bgra8,
-        // Additional flags for the capture settings that will be passed to user defined `new` function.
-        "Yea this works".to_string(),
-    );
+impl VideoRecorder {
+    pub fn start_recording() -> Arc<Mutex<Self>> {
+        // Gets the foreground window, refer to the docs for other capture items
+        let primary_monitor = Monitor::primary().expect("There is no primary monitor");
 
-    // Starts the capture and takes control of the current thread.
-    // The errors from handler trait will end up here
-    let capture = Capture::start_free_threaded(settings).expect("Screen capture failed");
-    let capture_callback = capture.callback();
+        let settings = Settings::new(
+            // Item to capture
+            primary_monitor,
+            // Capture cursor settings
+            CursorCaptureSettings::Default,
+            // Draw border settings
+            DrawBorderSettings::Default,
+            // The desired color format for the captured frame.
+            ColorFormat::Bgra8,
+            // Additional flags for the capture settings that will be passed to user defined `new` function.
+            "Yea this works".to_string(),
+        );
 
-    thread::spawn(move || {
-        listen(move |event| match event.event_type {
+        let capture = Capture::start_free_threaded(settings).expect("Screen capture failed");
+
+        Arc::new(Mutex::new(Self { capture }))
+    }
+
+    pub fn control_capture(&mut self, event: Event) {
+        let capture_callback = self.capture.callback();
+
+        match event.event_type {
             EventType::KeyPress(key) => match key {
                 rdev::Key::KeyQ => {
                     capture_callback.lock().should_stop = true;
@@ -127,11 +136,26 @@ pub fn record() {
                 _ => {}
             },
             _ => {}
-        })
-        .unwrap();
+        }
+    }
+
+    pub fn is_finished(&self) -> bool {
+        self.capture.is_finished()
+    }
+}
+
+pub fn record() {
+    let vider_recorder = VideoRecorder::start_recording();
+    // Starts the capture and takes control of the current thread.
+    // The errors from handler trait will end up here
+    // let capture = vider_recorder.start_recording();
+    let vider_recorder_clone = vider_recorder.clone();
+
+    thread::spawn(move || {
+        listen(move |event| vider_recorder_clone.lock().unwrap().control_capture(event)).unwrap();
     });
 
-    while !capture.is_finished() {
+    while !vider_recorder.lock().unwrap().is_finished() {
         sleep(Duration::from_micros(1));
     }
 }
