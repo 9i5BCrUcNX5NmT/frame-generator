@@ -1,5 +1,4 @@
 use images::process_images;
-use videos::process_videos;
 
 mod images;
 mod videos;
