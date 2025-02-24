@@ -1,6 +1,8 @@
 use std::io::{self, Write};
-use std::time::Instant;
+use std::thread::{self, sleep};
+use std::time::{Duration, Instant};
 
+use rdev::{listen, EventType};
 use windows_capture::capture::{Context, GraphicsCaptureApiHandler};
 use windows_capture::encoder::{
     AudioSettingsBuilder, ContainerSettingsBuilder, VideoEncoder, VideoSettingsBuilder,
@@ -16,6 +18,7 @@ struct Capture {
     encoder: Option<VideoEncoder>,
     // To measure the time the capture has been running
     start: Instant,
+    should_stop: bool, // Состояние записи
 }
 
 impl GraphicsCaptureApiHandler for Capture {
@@ -33,12 +36,13 @@ impl GraphicsCaptureApiHandler for Capture {
             VideoSettingsBuilder::new(2560, 1440),
             AudioSettingsBuilder::default().disabled(true),
             ContainerSettingsBuilder::default(),
-            "../data/videos/video.mp4",
+            "data/videos/video.mp4",
         )?;
 
         Ok(Self {
             encoder: Some(encoder),
             start: Instant::now(),
+            should_stop: false, // Инициализация состояния записи
         })
     }
 
@@ -63,13 +67,21 @@ impl GraphicsCaptureApiHandler for Capture {
         // let data = frame.buffer()?;
 
         // Stop the capture after 6 seconds
-        if self.start.elapsed().as_secs() >= 6 {
-            // Finish the encoder and save the video.
+        // if self.start.elapsed().as_secs() >= 6 {
+        //     // Finish the encoder and save the video.
+        //     self.encoder.take().unwrap().finish()?;
+
+        //     capture_control.stop();
+
+        //     // Because there wasn't any new lines in previous prints
+        //     println!();
+        // }
+
+        // Проверяем состояние записи
+        if self.should_stop {
+            // Завершите кодировщик и сохраните видео.
             self.encoder.take().unwrap().finish()?;
-
             capture_control.stop();
-
-            // Because there wasn't any new lines in previous prints
             println!();
         }
 
@@ -103,5 +115,23 @@ pub fn record() {
 
     // Starts the capture and takes control of the current thread.
     // The errors from handler trait will end up here
-    Capture::start(settings).expect("Screen capture failed");
+    let capture = Capture::start_free_threaded(settings).expect("Screen capture failed");
+    let capture_callback = capture.callback();
+
+    thread::spawn(move || {
+        listen(move |event| match event.event_type {
+            EventType::KeyPress(key) => match key {
+                rdev::Key::KeyQ => {
+                    capture_callback.lock().should_stop = true;
+                }
+                _ => {}
+            },
+            _ => {}
+        })
+        .unwrap();
+    });
+
+    while !capture.is_finished() {
+        sleep(Duration::from_micros(1));
+    }
 }
