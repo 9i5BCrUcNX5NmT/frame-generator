@@ -103,7 +103,7 @@ pub(crate) fn key_to_num(key: &str) -> u8 {
         "pageup" => 27,
         "return" => 28,
         "rightarrow" => 29,
-        "shiftleft" => 30,
+        "shiftleft" | "shift" => 30,
         "shiftright" => 31,
         "space" => 32,
         "tab" => 33,

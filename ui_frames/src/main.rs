@@ -11,6 +11,7 @@ enum Message {
     Key(String),
     Mouse(Point<f32>),
     ReloadImage,
+    ModelTraining,
 }
 
 #[derive(Default)]
@@ -28,7 +29,8 @@ fn view(state: &State) -> Element<Message> {
             Some(image_handle) => image(image_handle),
             None => image(""),
         },
-        button(text("Генерация")).on_press(Message::ReloadImage)
+        button(text("Генерация")).on_press(Message::ReloadImage),
+        button(text("Тренеровка")).on_press(Message::ModelTraining)
     ]
     .spacing(20);
 
@@ -66,11 +68,14 @@ fn update(state: &mut State, message: Message) {
             state.image = Some(match &state.image {
                 Some(image_handle) => generate_frame(image_handle, keys, mouse),
                 None => generate_frame(
-                    &image::Handle::from_path("tmp/test/output/image.png"),
+                    &image::Handle::from_path("data/images/test/out1.png"),
                     keys,
                     mouse,
                 ),
             })
+        }
+        Message::ModelTraining => {
+            model_training::training::run();
         }
     };
 }

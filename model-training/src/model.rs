@@ -9,8 +9,11 @@ use nn::pool::{AdaptiveAvgPool2d, AdaptiveAvgPool2dConfig};
 
 #[derive(Module, Debug)]
 pub struct Model<B: Backend> {
-    conv1: Conv2d<B>,
-    activation1: Relu,
+    conv12: Conv2d<B>,
+    activation12: Relu,
+
+    conv21: Conv2d<B>,
+    activation21: Relu,
 
     linear1: Linear<B>,
     linear2: Linear<B>,
@@ -46,8 +49,11 @@ impl ModelConfig {
             linear4: LinearConfig::new(self.hidden_size, self.embedding_dim).init(device),
             activation3: Relu,
 
-            conv1: Conv2dConfig::new([self.embedding_dim * 2 + 4, 4], [3, 3]).init(device),
-            activation1: Relu,
+            conv12: Conv2dConfig::new([self.embedding_dim * 2 + 4, 4], [3, 3]).init(device),
+            activation12: Relu,
+
+            conv21: Conv2dConfig::new([self.embedding_dim * 2 + 4, 4], [3, 3]).init(device),
+            activation21: Relu,
 
             dropout: DropoutConfig::new(self.dropout).init(),
             pool: AdaptiveAvgPool2dConfig::new([200, 200]).init(),
@@ -99,11 +105,18 @@ impl<B: Backend> Model<B> {
         let embed_map = embed_map.expand([batch_size, embedding_dim, height, width]); // [n, embed_dim * 2, 1, 1] -> [n, embed_dim * 2, 200, 200]
 
         // Обработка изображений
-        let x = Tensor::cat(vec![images, embed_map], 1); // [n, embed_dim * 2 + 4, 200, 200]
-        let x = self.conv1.forward(x);
-        let x = self.activation1.forward(x);
-        let x = self.dropout.forward(x);
+        let x = Tensor::cat(vec![images, embed_map.clone()], 1); // [n, embed_dim * 2 + 4, 200, 200]
 
+        // encoder
+        let x = self.conv12.forward(x);
+        let x = self.activation12.forward(x);
+
+        // decoder
+        // let x = Tensor::cat(vec![x, embed_map], 1);
+        let x = self.conv21.forward(x);
+        let x = self.activation21.forward(x);
+
+        // output
         let x = self.pool.forward(x);
         let x = x.reshape([batch_size, channels, height, width]);
 
