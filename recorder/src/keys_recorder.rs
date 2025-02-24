@@ -5,7 +5,7 @@ use std::fs::OpenOptions;
 use std::io;
 use std::sync::{Arc, Mutex};
 use std::thread;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use serde::Serialize;
 
@@ -53,7 +53,7 @@ pub fn record() -> io::Result<()> {
     });
 
     // Запись в CSV файл каждые 50 мс (или по вашему усмотрению)
-    let file_path = "../data/keys/key_events.csv";
+    let file_path = "data/keys/key_events.csv";
 
     let mut writer = Writer::from_writer(
         OpenOptions::new()
@@ -63,9 +63,7 @@ pub fn record() -> io::Result<()> {
             .unwrap(),
     );
 
-    let start_time = Instant::now();
-
-    while Instant::now().duration_since(start_time) < Duration::from_secs(6) {
+    loop {
         thread::sleep(Duration::from_millis(50));
 
         let k_states = key_states.lock().unwrap();
@@ -95,6 +93,4 @@ pub fn record() -> io::Result<()> {
             writer.flush().unwrap();
         }
     }
-
-    Ok(())
 }
