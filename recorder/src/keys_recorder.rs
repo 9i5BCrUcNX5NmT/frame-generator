@@ -1,15 +1,10 @@
 use csv::Writer;
-use rdev::{listen, Event, EventType};
+use rdev::{Event, EventType};
 use std::collections::HashSet;
-use std::fs::{File, OpenOptions};
-use std::io;
+use std::fs::File;
 use std::sync::{Arc, Mutex};
-use std::thread;
-use std::time::Duration;
 
 use serde::Serialize;
-
-use crate::DATA_DIR;
 
 #[derive(Debug, Serialize)]
 struct CsvRecord {
@@ -23,14 +18,6 @@ pub struct KeysRecorder {
 }
 
 impl KeysRecorder {
-    // pub fn get_key_states(&self) -> Arc<Mutex<HashSet<String>>> {
-    //     Arc::clone(&self.key_states)
-    // }
-
-    // pub fn get_mouse_states(&self) -> Arc<Mutex<HashSet<String>>> {
-    //     Arc::clone(&self.mouse_states)
-    // }
-
     pub fn new() -> Arc<Mutex<Self>> {
         Arc::new(Mutex::new(Self {
             key_states: HashSet::new(),
@@ -38,7 +25,7 @@ impl KeysRecorder {
         }))
     }
 
-    pub fn insert_event(&mut self, event: Event) {
+    pub fn insert_key(&mut self, event: &Event) {
         match event.event_type {
             EventType::KeyPress(key) => {
                 self.key_states.insert(format!("{:?}", key)); // Сохраняем нажатие клавиши
@@ -61,17 +48,7 @@ impl KeysRecorder {
         }
     }
 
-    pub fn write_keys(&mut self, data_dir: &str) {
-        let file_path = data_dir.to_owned() + "keys/key_events.csv";
-
-        let mut writer = Writer::from_writer(
-            OpenOptions::new()
-                .append(true)
-                .create(true)
-                .open(file_path)
-                .unwrap(),
-        );
-
+    pub fn write_keys(&mut self, writer: &mut Writer<File>) {
         if !self.key_states.is_empty() || !self.mouse_states.is_empty() {
             let mut record = CsvRecord {
                 keys: "".to_string(),
@@ -105,25 +82,5 @@ impl KeysRecorder {
             writer.serialize(record).unwrap();
             writer.flush().unwrap();
         }
-    }
-}
-
-pub fn record() -> io::Result<()> {
-    let recorder = KeysRecorder::new();
-
-    let recorder_clone = Arc::clone(&recorder);
-
-    // Запуск потока для прослушивания нажатий клавиш
-    thread::spawn(move || {
-        listen(move |event| {
-            recorder_clone.lock().unwrap().insert_event(event);
-        })
-        .unwrap();
-    });
-
-    loop {
-        thread::sleep(Duration::from_millis(50));
-
-        recorder.lock().unwrap().write_keys(DATA_DIR);
     }
 }

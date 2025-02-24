@@ -1,7 +1,13 @@
 use std::{
+    fs::OpenOptions,
     thread::{self, sleep},
     time::Duration,
 };
+
+use csv::Writer;
+use keys_recorder::KeysRecorder;
+use rdev::listen;
+use video_recorder::VideoRecorder;
 
 mod keys_recorder;
 mod video_recorder;
@@ -12,10 +18,33 @@ fn main() {
     std::fs::create_dir_all(DATA_DIR.to_owned() + "keys").unwrap();
     std::fs::create_dir_all(DATA_DIR.to_owned() + "videos").unwrap();
 
-    let videos_handle = thread::spawn(|| video_recorder::record());
-    let _keys_handle = thread::spawn(|| keys_recorder::record().unwrap());
+    let file_path = DATA_DIR.to_owned() + "keys/key_events.csv";
 
-    while !videos_handle.is_finished() {
-        sleep(Duration::from_millis(1));
+    let mut writer = Writer::from_writer(
+        OpenOptions::new()
+            .append(true)
+            .create(true)
+            .open(file_path)
+            .unwrap(),
+    );
+
+    let keys_recorder = KeysRecorder::new();
+    let keys_recorder_clone = keys_recorder.clone();
+
+    let vider_recorder = VideoRecorder::start_recording();
+    let vider_recorder_clone = vider_recorder.clone();
+
+    thread::spawn(move || {
+        listen(move |event| {
+            keys_recorder_clone.lock().unwrap().insert_key(&event);
+            vider_recorder_clone.lock().unwrap().control_capture(&event);
+        })
+        .unwrap();
+    });
+
+    while !vider_recorder.lock().unwrap().is_finished() {
+        sleep(Duration::from_micros(50));
+
+        keys_recorder.lock().unwrap().write_keys(&mut writer);
     }
 }

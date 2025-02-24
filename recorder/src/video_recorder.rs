@@ -1,10 +1,9 @@
 use std::error::Error;
 use std::io::{self, Write};
 use std::sync::{Arc, Mutex};
-use std::thread::{self, sleep};
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
-use rdev::{listen, Event, EventType};
+use rdev::{Event, EventType};
 use windows_capture::capture::{Context, GraphicsCaptureApiHandler};
 use windows_capture::encoder::{
     AudioSettingsBuilder, ContainerSettingsBuilder, VideoEncoder, VideoSettingsBuilder,
@@ -125,7 +124,7 @@ impl VideoRecorder {
         Arc::new(Mutex::new(Self { capture }))
     }
 
-    pub fn control_capture(&mut self, event: Event) {
+    pub fn control_capture(&mut self, event: &Event) {
         let capture_callback = self.capture.callback();
 
         match event.event_type {
@@ -141,21 +140,5 @@ impl VideoRecorder {
 
     pub fn is_finished(&self) -> bool {
         self.capture.is_finished()
-    }
-}
-
-pub fn record() {
-    let vider_recorder = VideoRecorder::start_recording();
-    // Starts the capture and takes control of the current thread.
-    // The errors from handler trait will end up here
-    // let capture = vider_recorder.start_recording();
-    let vider_recorder_clone = vider_recorder.clone();
-
-    thread::spawn(move || {
-        listen(move |event| vider_recorder_clone.lock().unwrap().control_capture(event)).unwrap();
-    });
-
-    while !vider_recorder.lock().unwrap().is_finished() {
-        sleep(Duration::from_micros(1));
     }
 }
