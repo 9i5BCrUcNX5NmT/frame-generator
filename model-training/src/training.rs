@@ -67,7 +67,7 @@ impl<B: Backend> ValidStep<FrameBatch<B>, RegressionOutput<B>> for Model<B> {
 pub(crate) struct TrainingConfig {
     pub model: ModelConfig,
     pub optimizer: AdamConfig,
-    #[config(default = 100)]
+    #[config(default = 10)]
     pub num_epochs: usize,
     #[config(default = 64)]
     pub batch_size: usize,
