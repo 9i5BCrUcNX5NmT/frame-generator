@@ -1,3 +1,3 @@
 [workspace]
-members = ["model-training", "preprocessor", "recorder", "ui_frames"]
+members = ["model-training", "preprocessor", "recorder", "ui"]
 resolver = "2"

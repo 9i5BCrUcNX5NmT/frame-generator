@@ -2,7 +2,7 @@ use crate::{
     csv_processing::load_keys_from_directory,
     data::{FrameBatch, FrameBatcher},
     images::{convert_images_to_image_pixel_data, load_images_from_directory},
-    model::{Model, ModelConfig},
+    model::{FuseUNet, FuseUNetConfig},
     types::MyData,
 };
 use burn::{
@@ -20,7 +20,7 @@ use nn::loss::HuberLossConfig;
 
 use burn::{prelude::Backend, tensor::Tensor};
 
-impl<B: Backend> Model<B> {
+impl<B: Backend> FuseUNet<B> {
     pub fn forward_generation(
         &self,
         inputs: Tensor<B, 4>,
@@ -49,7 +49,7 @@ impl<B: Backend> Model<B> {
     }
 }
 
-impl<B: AutodiffBackend> TrainStep<FrameBatch<B>, RegressionOutput<B>> for Model<B> {
+impl<B: AutodiffBackend> TrainStep<FrameBatch<B>, RegressionOutput<B>> for FuseUNet<B> {
     fn step(&self, batch: FrameBatch<B>) -> TrainOutput<RegressionOutput<B>> {
         let item = self.forward_generation(batch.images, batch.keys, batch.mouse, batch.targets);
 
@@ -57,7 +57,7 @@ impl<B: AutodiffBackend> TrainStep<FrameBatch<B>, RegressionOutput<B>> for Model
     }
 }
 
-impl<B: Backend> ValidStep<FrameBatch<B>, RegressionOutput<B>> for Model<B> {
+impl<B: Backend> ValidStep<FrameBatch<B>, RegressionOutput<B>> for FuseUNet<B> {
     fn step(&self, batch: FrameBatch<B>) -> RegressionOutput<B> {
         self.forward_generation(batch.images, batch.keys, batch.mouse, batch.targets)
     }
@@ -65,13 +65,13 @@ impl<B: Backend> ValidStep<FrameBatch<B>, RegressionOutput<B>> for Model<B> {
 
 #[derive(Config)]
 pub(crate) struct TrainingConfig {
-    pub model: ModelConfig,
+    pub model: FuseUNetConfig,
     pub optimizer: AdamConfig,
-    #[config(default = 10)]
+    #[config(default = 1)]
     pub num_epochs: usize,
-    #[config(default = 64)]
+    #[config(default = 8)]
     pub batch_size: usize,
-    #[config(default = 4)]
+    #[config(default = 16)]
     pub num_workers: usize,
     #[config(default = 42)]
     pub seed: u64,
@@ -172,7 +172,7 @@ pub fn run() {
 
     crate::training::train::<MyAutodiffBackend>(
         artifact_dir,
-        TrainingConfig::new(ModelConfig::new(), AdamConfig::new()),
+        TrainingConfig::new(FuseUNetConfig::new(), AdamConfig::new()),
         device.clone(),
     );
 }

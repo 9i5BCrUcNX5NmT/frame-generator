@@ -1,5 +1,7 @@
+use std::thread;
+
 use iced::keyboard::{on_key_press, Key, Modifiers};
-use iced::widget::{button, column, container, image, mouse_area, text};
+use iced::widget::{button, column, container, image, mouse_area, row, text};
 use iced::Length;
 use iced::{Element, Point, Subscription, Theme};
 use utils::{generate_frame, key_to_string};
@@ -12,6 +14,7 @@ enum Message {
     Mouse(Point<f32>),
     ReloadImage,
     ModelTraining,
+    Record,
 }
 
 #[derive(Default)]
@@ -29,8 +32,12 @@ fn view(state: &State) -> Element<Message> {
             Some(image_handle) => image(image_handle),
             None => image(""),
         },
-        button(text("Генерация")).on_press(Message::ReloadImage),
-        button(text("Тренеровка")).on_press(Message::ModelTraining)
+        row![
+            button(text("Генерация")).on_press(Message::ReloadImage),
+            button(text("Тренировка")).on_press(Message::ModelTraining),
+            button(text("Запись")).on_press(Message::Record)
+        ]
+        .spacing(20)
     ]
     .spacing(20);
 
@@ -75,7 +82,10 @@ fn update(state: &mut State, message: Message) {
             })
         }
         Message::ModelTraining => {
-            model_training::training::run();
+            thread::spawn(|| model_training::training::run());
+        }
+        Message::Record => {
+            thread::spawn(|| recorder::run());
         }
     };
 }

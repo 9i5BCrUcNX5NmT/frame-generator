@@ -1,144 +1,136 @@
 use burn::{
     nn::{
         conv::{Conv2d, Conv2dConfig},
-        Dropout, DropoutConfig, Linear, LinearConfig, Relu,
+        pool::{AdaptiveAvgPool2d, AdaptiveAvgPool2dConfig},
     },
     prelude::*,
 };
-use nn::pool::{AdaptiveAvgPool2d, AdaptiveAvgPool2dConfig};
+
+use crate::blocks::{
+    ConvFusionBlock, ConvFusionBlockConfig, DownBlock, DownBlockConfig, KeyboardEmbedder,
+    KeyboardEmbedderConfig, MouseEmbedder, MouseEmbedderConfig, UpBlock, UpBlockConfig,
+};
 
 #[derive(Module, Debug)]
-pub struct Model<B: Backend> {
-    conv12: Conv2d<B>,
-    activation12: Relu,
+pub struct FuseUNet<B: Backend> {
+    mouse_embedder: MouseEmbedder<B>,
+    keys_embedder: KeyboardEmbedder<B>,
+    inc: ConvFusionBlock<B>,
+    // down1: DownBlock<B>,
+    // down2: DownBlock<B>,
+    // down3: DownBlock<B>,
+    // down4: DownBlock<B>,
 
-    conv21: Conv2d<B>,
-    activation21: Relu,
-
-    linear1: Linear<B>,
-    linear2: Linear<B>,
-    activation2: Relu,
-
-    linear3: Linear<B>,
-    linear4: Linear<B>,
-    activation3: Relu,
-
-    dropout: Dropout,
-    pool: AdaptiveAvgPool2d,
+    // up1: UpBlock<B>,
+    // up2: UpBlock<B>,
+    // up3: UpBlock<B>,
+    // up4: UpBlock<B>,
+    // out_conv: Conv2d<B>,
+    // adaptive_pool: AdaptiveAvgPool2d,
 }
 
 #[derive(Config, Debug)]
-pub struct ModelConfig {
-    #[config(default = "256")]
-    hidden_size: usize,
-    #[config(default = "0.5")]
-    dropout: f64,
-    #[config(default = "6")]
-    embedding_dim: usize,
+pub struct FuseUNetConfig {
+    #[config(default = "4")]
+    in_channels: usize,
+    #[config(default = "64")]
+    base_channels: usize,
+    #[config(default = "4")]
+    out_channels: usize,
+    #[config(default = "128")]
+    embed_dim: usize,
 }
 
-impl ModelConfig {
+impl FuseUNetConfig {
     /// Returns the initialized model.
-    pub fn init<B: Backend>(&self, device: &B::Device) -> Model<B> {
-        Model {
-            linear1: LinearConfig::new(108, self.hidden_size).init(device),
-            linear2: LinearConfig::new(self.hidden_size, self.embedding_dim).init(device),
-            activation2: Relu,
+    pub fn init<B: Backend>(&self, device: &B::Device) -> FuseUNet<B> {
+        FuseUNet {
+            mouse_embedder: MouseEmbedderConfig::new(self.embed_dim).init(device),
+            keys_embedder: KeyboardEmbedderConfig::new(self.embed_dim).init(device),
+            inc: ConvFusionBlockConfig::new(self.in_channels, self.base_channels, self.embed_dim)
+                .init(device),
+            // down1: DownBlockConfig::new(self.base_channels, self.base_channels * 2, self.embed_dim)
+            //     .init(device),
+            // down2: DownBlockConfig::new(
+            //     self.base_channels * 2,
+            //     self.base_channels * 4,
+            //     self.embed_dim,
+            // )
+            // .init(device),
+            // down3: DownBlockConfig::new(
+            //     self.base_channels * 4,
+            //     self.base_channels * 8,
+            //     self.embed_dim,
+            // )
+            // .init(device),
+            // down4: DownBlockConfig::new(
+            //     self.base_channels * 8,
+            //     self.base_channels * 16,
+            //     self.embed_dim,
+            // )
+            // .init(device),
 
-            linear3: LinearConfig::new(400, self.hidden_size).init(device),
-            linear4: LinearConfig::new(self.hidden_size, self.embedding_dim).init(device),
-            activation3: Relu,
-
-            conv12: Conv2dConfig::new([self.embedding_dim * 2 + 4, 4], [3, 3]).init(device),
-            activation12: Relu,
-
-            conv21: Conv2dConfig::new([self.embedding_dim * 2 + 4, 4], [3, 3]).init(device),
-            activation21: Relu,
-
-            dropout: DropoutConfig::new(self.dropout).init(),
-            pool: AdaptiveAvgPool2dConfig::new([200, 200]).init(),
+            // up1: UpBlockConfig::new(
+            //     self.base_channels * 16,
+            //     self.base_channels * 8,
+            //     self.embed_dim,
+            // )
+            // .init(device),
+            // up2: UpBlockConfig::new(
+            //     self.base_channels * 8,
+            //     self.base_channels * 4,
+            //     self.embed_dim,
+            // )
+            // .init(device),
+            // up3: UpBlockConfig::new(
+            //     self.base_channels * 4,
+            //     self.base_channels * 2,
+            //     self.embed_dim,
+            // )
+            // .init(device),
+            // up4: UpBlockConfig::new(self.base_channels * 2, self.base_channels, self.embed_dim)
+            //     .init(device),
+            // out_conv: Conv2dConfig::new([self.base_channels, self.out_channels], [1, 1])
+            //     .init(device),
+            // adaptive_pool: AdaptiveAvgPool2dConfig::new([200, 200]).init(),
         }
     }
 }
 
-impl<B: Backend> Model<B> {
-    /// # Shapes
-    ///   - Images [batch_size, color, height, width]
-    ///   - Keys [batch_size, type, key_number]
-    ///   - Output [batch_size, color, height, width]
+impl<B: Backend> FuseUNet<B> {
     pub fn forward(
         &self,
         images: Tensor<B, 4>,
         keys: Tensor<B, 2>,
         mouse: Tensor<B, 3>,
     ) -> Tensor<B, 4> {
-        let [batch_size, channels, height, width] = images.dims();
+        // Получаем эмбеддинги
+        let mouse_emb = self.mouse_embedder.forward(mouse); // [embed_dim]
+        let keys_emb = self.keys_embedder.forward(keys); // [embed_dim]
 
-        // // Create a channel at the second dimension.
-        // let x = images.reshape([batch_size, 1, height, width]);
+        // здесь для простоты просто суммируем
+        let embed = mouse_emb + keys_emb; // [embed_dim]
 
-        // let x = self.conv11.forward(x);
-        // let x = self.activation11.forward(x);
+        // // Прямой ход по U-Net
+        // let x1 = self.inc.forward(images, embed.clone()); // [channels, height / 9, width / 9]
+        // let x2 = self.down1.forward(x1.clone(), embed.clone());
+        // let x3 = self.down2.forward(x2.clone(), embed.clone());
+        // let x4 = self.down3.forward(x3.clone(), embed.clone());
+        // let x5 = self.down4.forward(x4.clone(), embed.clone());
 
-        // let y = inputs.reshape([batch_size, colors, height, width]);
+        // // Обратный ход (skip connections)
+        // let d1 = self.up1.forward(x5, x4, embed.clone());
+        // let d2 = self.up1.forward(d1, x3, embed.clone());
+        // let d3 = self.up1.forward(d2, x2, embed.clone());
+        // let d4 = self.up1.forward(d3, x1, embed);
 
-        // let y = inputs.reshape([batch_size, 1, height, width]);
-        // println!("{:?}", inputs.dims());
+        // let out = self.out_conv.forward(d4);
+        // let out = self.adaptive_pool.forward(out);
 
-        // Обработка ключей
-        let k = self.linear1.forward(keys); // [n, 108] -> [n, hidden_size]
-        let k = self.activation2.forward(k);
-        let k = self.linear2.forward(k); // [n, hidden_size] -> [n, embed_dim]
+        // out
 
-        // Обработка мыши
-        let m: Tensor<B, 2> = mouse.flatten(1, 2); // [n, 2, 200] -> [n, 400]
-        let m = self.linear3.forward(m); // [n, 400] -> [n, hidden_size]
-        let m = self.activation3.forward(m);
-        let m = self.linear4.forward(m); // [n, hidden_size] -> [n, embed_dim]
-
-        // Совмещение эмбеддингов
-        let embed_map = Tensor::cat(vec![k, m], 1); // [n, embed_dim * 2]
-
-        let [_, embedding_dim] = embed_map.dims();
-
-        let embed_map = embed_map.unsqueeze_dims::<4>(&[2, 3]); // [n, embed_dim * 2] -> [n, embed_dim * 2, 1, 1]
-        let embed_map = embed_map.expand([batch_size, embedding_dim, height, width]); // [n, embed_dim * 2, 1, 1] -> [n, embed_dim * 2, 200, 200]
-
-        // Обработка изображений
-        let x = Tensor::cat(vec![images, embed_map.clone()], 1); // [n, embed_dim * 2 + 4, 200, 200]
-
-        // encoder
-        let x = self.conv12.forward(x);
-        let x = self.activation12.forward(x);
-
-        // decoder
-        // let x = Tensor::cat(vec![x, embed_map], 1);
-        let x = self.conv21.forward(x);
-        let x = self.activation21.forward(x);
-
-        // output
-        let x = self.pool.forward(x);
-        let x = x.reshape([batch_size, channels, height, width]);
-
-        // let ;
-
-        // let y = self.linear01.forward(keys);
-        // let y = self.activation01.forward(y);
-        // let y = self.linear11.forward(y);
-        // let y = self.activation11.forward(y);
-
-        // let x = self.conv31.forward(x);
-        // let x = self.pool.forward(x);
-        // let x = self.activation31.forward(x);
-
-        // let y = y.reshape([batch_size, height, width]);
-
-        // let z = x + y;
-
-        // let z = self.conv31.forward(z);
-        // let z = self.activation31.forward(z);
-
-        // let r = y.reshape([batch_size, colors, height, width]);
+        let x = self.inc.forward(images.clone(), embed.clone());
+        let x = images + x;
 
         x
     }

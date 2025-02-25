@@ -1,3 +1,4 @@
+mod blocks;
 mod csv_processing;
 mod data;
 mod images;
