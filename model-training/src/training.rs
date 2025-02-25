@@ -69,9 +69,9 @@ pub(crate) struct TrainingConfig {
     pub optimizer: AdamConfig,
     #[config(default = 1)]
     pub num_epochs: usize,
-    #[config(default = 64)]
+    #[config(default = 8)]
     pub batch_size: usize,
-    #[config(default = 15)]
+    #[config(default = 16)]
     pub num_workers: usize,
     #[config(default = 42)]
     pub seed: u64,

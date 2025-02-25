@@ -30,7 +30,7 @@ fn view(state: &State) -> Element<Message> {
             None => image(""),
         },
         button(text("Генерация")).on_press(Message::ReloadImage),
-        button(text("Тренеровка")).on_press(Message::ModelTraining)
+        button(text("Тренировка")).on_press(Message::ModelTraining)
     ]
     .spacing(20);
 

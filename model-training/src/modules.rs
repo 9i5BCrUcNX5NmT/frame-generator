@@ -1,7 +1,7 @@
 use burn::config::Config;
 use burn::module::Module;
 use burn::nn::conv::{Conv2d, Conv2dConfig, ConvTranspose2d, ConvTranspose2dConfig};
-use burn::nn::pool::{MaxPool2d, MaxPool2dConfig};
+use burn::nn::pool::{AdaptiveAvgPool2d, AdaptiveAvgPool2dConfig, MaxPool2d, MaxPool2dConfig};
 use burn::nn::{Linear, LinearConfig, Relu};
 use burn::tensor::backend::Backend;
 use burn::tensor::Tensor;
@@ -42,14 +42,14 @@ impl<B: Backend> ConvFusionModule<B> {
         let [batch_size, _channels, height, width] = input.dims();
         let [_, embedding_dim] = embed.dims();
 
-        let embed_map = embed.unsqueeze_dims::<4>(&[2, 3]);
-        let embed_map = embed_map.expand([batch_size, embedding_dim, height, width]);
+        let embed_map = embed.unsqueeze_dims::<4>(&[2, 3]); // [embed_dim, 1, 1]
+        let embed_map = embed_map.expand([batch_size, embedding_dim, height, width]); // [embed_dim, height, width]
 
-        let x = Tensor::cat(vec![input, embed_map.clone()], 1);
+        let x = Tensor::cat(vec![input, embed_map.clone()], 1); // [embed_dim + channels, height, width]
 
-        let x = self.conv1.forward(x);
+        let x = self.conv1.forward(x); // [channels, height / 3, width / 3]
         let x = self.activation1.forward(x);
-        let x = self.conv2.forward(x);
+        let x = self.conv2.forward(x); // [channels, height / 9, width / 9]
         let x = self.activation2.forward(x);
 
         x
@@ -133,12 +133,13 @@ impl<B: Backend> UpModule<B> {
         if i3 != s3 || i4 != s4 {
             let diff_y = s3 - i3;
             let diff_x = s4 - i4;
+
             x = x.pad(
                 (
                     diff_x / 2,
-                    diff_x - diff_x / 2,
+                    diff_x - diff_x / 2 - 1,
                     diff_y / 2,
-                    diff_y - diff_y / 2,
+                    diff_y - diff_y / 2 - 1,
                 ),
                 0.0, // TODO: Другие виды заполнения?
             )

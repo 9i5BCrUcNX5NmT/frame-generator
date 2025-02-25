@@ -1,5 +1,8 @@
 use burn::{
-    nn::conv::{Conv2d, Conv2dConfig},
+    nn::{
+        conv::{Conv2d, Conv2dConfig},
+        pool::{AdaptiveAvgPool2d, AdaptiveAvgPool2dConfig},
+    },
     prelude::*,
 };
 
@@ -26,15 +29,16 @@ pub struct FuseUNet<B: Backend> {
     up4: UpModule<B>,
 
     out_conv: Conv2d<B>,
+    adaptive_pool: AdaptiveAvgPool2d,
 }
 
 #[derive(Config, Debug)]
 pub struct FuseUNetConfig {
     #[config(default = "4")]
     in_channels: usize,
-    #[config(default = "128")]
-    base_channels: usize,
     #[config(default = "64")]
+    base_channels: usize,
+    #[config(default = "4")]
     out_channels: usize,
     #[config(default = "128")]
     embed_dim: usize,
@@ -98,15 +102,12 @@ impl FuseUNetConfig {
 
             out_conv: Conv2dConfig::new([self.base_channels, self.out_channels], [1, 1])
                 .init(device),
+            adaptive_pool: AdaptiveAvgPool2dConfig::new([200, 200]).init(),
         }
     }
 }
 
 impl<B: Backend> FuseUNet<B> {
-    /// # Shapes
-    ///   - Images [batch_size, color, height, width]
-    ///   - Keys [batch_size, type, key_number]
-    ///   - Output [batch_size, color, height, width]
     pub fn forward(
         &self,
         images: Tensor<B, 4>,
@@ -114,14 +115,14 @@ impl<B: Backend> FuseUNet<B> {
         mouse: Tensor<B, 3>,
     ) -> Tensor<B, 4> {
         // Получаем эмбеддинги
-        let mouse_emb = self.mouse_embedder.forward(mouse);
-        let keys_emb = self.keys_embedder.forward(keys);
+        let mouse_emb = self.mouse_embedder.forward(mouse); // [embed_dim]
+        let keys_emb = self.keys_embedder.forward(keys); // [embed_dim]
 
         // здесь для простоты просто суммируем
-        let embed = mouse_emb + keys_emb;
+        let embed = mouse_emb + keys_emb; // [embed_dim]
 
         // Прямой ход по U-Net
-        let x1 = self.inc.forward(images, embed.clone()); // нет MaxPool, сразу ConvFusionBlock
+        let x1 = self.inc.forward(images, embed.clone()); // [channels, height / 9, width / 9]
         let x2 = self.down1.forward(x1.clone(), embed.clone());
         let x3 = self.down2.forward(x2.clone(), embed.clone());
         let x4 = self.down3.forward(x3.clone(), embed.clone());
@@ -134,6 +135,7 @@ impl<B: Backend> FuseUNet<B> {
         let d4 = self.up1.forward(d3, x1, embed);
 
         let out = self.out_conv.forward(d4);
+        let out = self.adaptive_pool.forward(out);
 
         out
     }
