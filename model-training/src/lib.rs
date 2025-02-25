@@ -2,6 +2,7 @@ mod csv_processing;
 mod data;
 mod images;
 pub mod inference;
-mod model;
+mod models;
+mod modules;
 pub mod training;
 mod types;
