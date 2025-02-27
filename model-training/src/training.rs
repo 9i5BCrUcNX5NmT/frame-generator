@@ -2,11 +2,11 @@ use crate::{
     csv_processing::load_keys_from_directory,
     data::{FrameBatch, FrameBatcher},
     images::{convert_images_to_image_pixel_data, load_images_from_directory},
-    model::{FuseUNet, FuseUNetConfig},
+    model::{MyModel, MyModelConfig},
     types::MyData,
 };
 use burn::{
-    backend::{Autodiff, Wgpu},
+    backend::{cuda_jit::CudaDevice, wgpu::WgpuDevice, Autodiff, CudaJit, Wgpu},
     data::{dataloader::DataLoaderBuilder, dataset::InMemDataset},
     optim::AdamConfig,
     prelude::*,
@@ -20,7 +20,7 @@ use nn::loss::HuberLossConfig;
 
 use burn::{prelude::Backend, tensor::Tensor};
 
-impl<B: Backend> FuseUNet<B> {
+impl<B: Backend> MyModel<B> {
     pub fn forward_generation(
         &self,
         inputs: Tensor<B, 4>,
@@ -49,7 +49,7 @@ impl<B: Backend> FuseUNet<B> {
     }
 }
 
-impl<B: AutodiffBackend> TrainStep<FrameBatch<B>, RegressionOutput<B>> for FuseUNet<B> {
+impl<B: AutodiffBackend> TrainStep<FrameBatch<B>, RegressionOutput<B>> for MyModel<B> {
     fn step(&self, batch: FrameBatch<B>) -> TrainOutput<RegressionOutput<B>> {
         let item = self.forward_generation(batch.images, batch.keys, batch.mouse, batch.targets);
 
@@ -57,7 +57,7 @@ impl<B: AutodiffBackend> TrainStep<FrameBatch<B>, RegressionOutput<B>> for FuseU
     }
 }
 
-impl<B: Backend> ValidStep<FrameBatch<B>, RegressionOutput<B>> for FuseUNet<B> {
+impl<B: Backend> ValidStep<FrameBatch<B>, RegressionOutput<B>> for MyModel<B> {
     fn step(&self, batch: FrameBatch<B>) -> RegressionOutput<B> {
         self.forward_generation(batch.images, batch.keys, batch.mouse, batch.targets)
     }
@@ -65,13 +65,13 @@ impl<B: Backend> ValidStep<FrameBatch<B>, RegressionOutput<B>> for FuseUNet<B> {
 
 #[derive(Config)]
 pub(crate) struct TrainingConfig {
-    pub model: FuseUNetConfig,
+    pub model: MyModelConfig,
     pub optimizer: AdamConfig,
-    #[config(default = 1)]
+    #[config(default = 15)]
     pub num_epochs: usize,
     #[config(default = 8)]
     pub batch_size: usize,
-    #[config(default = 16)]
+    #[config(default = 4)]
     pub num_workers: usize,
     #[config(default = 42)]
     pub seed: u64,
@@ -164,15 +164,21 @@ fn train<B: AutodiffBackend>(artifact_dir: &str, config: TrainingConfig, device:
 }
 
 pub fn run() {
-    type MyBackend = Wgpu<f32, i32>;
+    let artifact_dir = "tmp/test";
+
+    // type MyBackend = Wgpu<f32, i32>;
+    // type MyAutodiffBackend = Autodiff<MyBackend>;
+
+    // let device = WgpuDevice::default();
+
+    type MyBackend = CudaJit<f32, i32>;
     type MyAutodiffBackend = Autodiff<MyBackend>;
 
-    let device = burn::backend::wgpu::WgpuDevice::default();
-    let artifact_dir = "tmp/test";
+    let device = CudaDevice::default();
 
     crate::training::train::<MyAutodiffBackend>(
         artifact_dir,
-        TrainingConfig::new(FuseUNetConfig::new(), AdamConfig::new()),
+        TrainingConfig::new(MyModelConfig::new(), AdamConfig::new()),
         device.clone(),
     );
 }

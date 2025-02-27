@@ -1,6 +1,6 @@
 use burn::{data::dataloader::batcher::Batcher, prelude::*};
 
-use crate::types::MyData;
+use crate::{types::MyData, HEIGHT, MOUSE_VECTOR_LENGTH, WIDTH};
 
 #[derive(Clone)]
 pub struct FrameBatcher<B: Backend> {
@@ -38,7 +38,8 @@ impl<B: Backend> FrameBatcher<B> {
         let mouse = mydata
             .iter()
             .map(|data| {
-                let mut mouse_vector = [[0; 2]; 200]; // Может не хватить, тк в коде нет ограничений на количество передвижений мыши
+                let mut mouse_vector: [[i32; 2]; MOUSE_VECTOR_LENGTH] =
+                    [[0; 2]; MOUSE_VECTOR_LENGTH]; // Может не хватить, тк в коде нет ограничений на количество передвижений мыши
 
                 for (i, value) in data.keys.mouse.iter().enumerate() {
                     mouse_vector[i as usize] = *value;
@@ -48,9 +49,9 @@ impl<B: Backend> FrameBatcher<B> {
             })
             .map(|vector| TensorData::from(vector).convert::<B::IntElem>())
             .map(|data| Tensor::<B, 2>::from_data(data, &self.device))
-            .map(|tensor| tensor.reshape([1, 2, 200]))
+            .map(|tensor| tensor.reshape([1, 2, MOUSE_VECTOR_LENGTH]))
             // // Простая нормализация
-            // .map(|tensor| tensor / 255)
+            .map(|tensor| tensor / 255)
             .collect();
 
         Tensor::cat(mouse, 0)
@@ -72,8 +73,8 @@ impl<B: Backend> FrameBatcher<B> {
             .iter()
             .map(|data| TensorData::from(data.image.pixels).convert::<B::IntElem>())
             .map(|data| Tensor::<B, 3>::from_data(data, &self.device))
-            // 1 штука, 4 параметра цвета, 200 на 200 размер
-            .map(|tensor| tensor.reshape([1, 4, 200, 200]))
+            // 1 штука, 4 параметра цвета
+            .map(|tensor| tensor.reshape([1, 4, HEIGHT, WIDTH]))
             // Простая нормализация цветов
             .map(|tensor| tensor / 255)
             .collect();

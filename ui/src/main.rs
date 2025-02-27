@@ -12,6 +12,7 @@ mod utils;
 enum Message {
     Key(String),
     Mouse(Point<f32>),
+    GenerateImage,
     ReloadImage,
     ModelTraining,
     Record,
@@ -32,9 +33,13 @@ fn view(state: &State) -> Element<Message> {
         match &state.image {
             Some(image_handle) => image(image_handle),
             None => image(""),
-        },
+        }
+        // .content_fit(iced::ContentFit::Fill),
+        .width(Length::Fill)
+        .height(Length::Fill),
         row![
-            button(text("Генерация")).on_press(Message::ReloadImage),
+            button(text("Генерация")).on_press(Message::GenerateImage),
+            button(text("Сбросить изображение")).on_press(Message::ReloadImage),
             button(text("Тренировка")).on_press(Message::ModelTraining),
             button(text("Запись")).on_press(Message::Record),
             button(text("Обработать")).on_press(Message::Preprocess)
@@ -70,14 +75,14 @@ fn update(state: &mut State, message: Message) {
     match message {
         Message::Key(key) => state.pressed_key = key,
         Message::Mouse(point) => state.mouse_position = point,
-        Message::ReloadImage => {
+        Message::GenerateImage => {
             let keys = vec![state.pressed_key.clone()];
             let mouse = vec![state.mouse_position];
 
             state.image = Some(match &state.image {
                 Some(image_handle) => generate_frame(image_handle, keys, mouse),
                 None => generate_frame(
-                    &image::Handle::from_path("data/images/test/out1.png"),
+                    &image::Handle::from_path("data/images/test/out_0001.png"),
                     keys,
                     mouse,
                 ),
@@ -91,6 +96,9 @@ fn update(state: &mut State, message: Message) {
         }
         Message::Preprocess => {
             thread::spawn(|| preprocessor::run());
+        }
+        Message::ReloadImage => {
+            state.image = Some(image::Handle::from_path("data/images/test/out_0001.png"))
         }
     };
 }

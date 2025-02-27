@@ -1,5 +1,5 @@
 use burn::{
-    backend::Wgpu,
+    backend::{cuda_jit::CudaDevice, wgpu::WgpuDevice, CudaJit, Wgpu},
     config::Config,
     data::dataloader::batcher::Batcher,
     module::Module,
@@ -11,9 +11,10 @@ use image::DynamicImage;
 use crate::{
     csv_processing::{key_to_num, KeysRecord},
     data::FrameBatcher,
-    images::{convert_image_pixel_data_to_images, ImagePixelData},
+    images::{convert_image_pixel_data_to_images, MyImage},
     training::TrainingConfig,
     types::MyData,
+    HEIGHT, WIDTH,
 };
 
 fn infer<B: Backend>(artifact_dir: &str, device: B::Device, item: MyData) -> Vec<DynamicImage> {
@@ -29,27 +30,26 @@ fn infer<B: Backend>(artifact_dir: &str, device: B::Device, item: MyData) -> Vec
     let batch = batcher.batch(vec![item]);
     let output = model.forward(batch.images, batch.keys, batch.mouse);
 
-    let images_data: Vec<ImagePixelData> = output
+    let images_data: Vec<MyImage<WIDTH, HEIGHT>> = output
         .iter_dim(0)
         // Возвращение из нормализации
         .map(|tensor| tensor * 255)
         // Убираем лишнюю размерность
-        .map(|tensor| tensor.reshape([4, 200, 200]))
+        .map(|tensor| tensor.reshape([4, HEIGHT, WIDTH]))
         .map(|tensor| tensor.to_data())
         .map(|data| data.to_vec::<f32>().unwrap())
-        // vector = 4 * 200 * 200
         .map(|vector| {
-            let mut pixels: [[[u8; 200]; 200]; 4] = [[[0; 200]; 200]; 4];
+            let mut pixels: [[[u8; WIDTH]; HEIGHT]; 4] = [[[0; WIDTH]; HEIGHT]; 4];
 
-            for (color_index, i) in vector.chunks(200 * 200).enumerate() {
-                for (height, j) in i.chunks(200).enumerate() {
+            for (color_index, i) in vector.chunks(HEIGHT * WIDTH).enumerate() {
+                for (height, j) in i.chunks(HEIGHT).enumerate() {
                     for (width, k) in j.iter().enumerate() {
                         pixels[color_index][height][width] = *k as u8;
                     }
                 }
             }
 
-            ImagePixelData { pixels }
+            MyImage { pixels }
             // pixels
             // vector.iter().map(|v| *v as u8).collect::<Vec<u8>>()
         })
@@ -77,13 +77,16 @@ pub fn generate(
     let artifact_dir = "tmp/test";
     // let image_path = "tmp/test/output";
 
-    type MyBackend = Wgpu<f32, i32>;
-    let device = burn::backend::wgpu::WgpuDevice::default();
+    // type MyBackend = Wgpu<f32, i32>;
+    // let device = WgpuDevice::default();
+
+    type MyBackend = CudaJit<f32, i32>;
+    let device = CudaDevice::default();
 
     // TODO: хз
     // let image_path = Path::new(image_path).to_path_buf();
     // let image_data = load_images_from_directory(image_path).unwrap();
-    let image_pixel_data = ImagePixelData::from_image(current_image);
+    let image_pixel_data = MyImage::from_image(current_image);
 
     let keys = keys
         .iter()
