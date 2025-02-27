@@ -10,3 +10,4 @@ iced = { version = "0.13.1", features = ["image"] }
 image = "0.25.5"
 model-training = { path = "../model-training" }
 recorder = { path = "../recorder" }
+preprocessor = { path = "../preprocessor" }
