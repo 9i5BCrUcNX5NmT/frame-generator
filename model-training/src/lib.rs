@@ -6,3 +6,7 @@ pub mod inference;
 mod model;
 pub mod training;
 mod types;
+
+pub const WIDTH: usize = 200;
+pub const HEIGHT: usize = 200;
+pub const MOUSE_VECTOR_LENGTH: usize = 200;

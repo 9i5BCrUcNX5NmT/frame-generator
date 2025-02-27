@@ -6,13 +6,16 @@ use burn::{
     prelude::*,
 };
 
-use crate::blocks::{
-    ConvFusionBlock, ConvFusionBlockConfig, DownBlock, DownBlockConfig, KeyboardEmbedder,
-    KeyboardEmbedderConfig, MouseEmbedder, MouseEmbedderConfig, UpBlock, UpBlockConfig,
+use crate::{
+    blocks::{
+        ConvFusionBlock, ConvFusionBlockConfig, DownBlock, DownBlockConfig, KeyboardEmbedder,
+        KeyboardEmbedderConfig, MouseEmbedder, MouseEmbedderConfig, UpBlock, UpBlockConfig,
+    },
+    HEIGHT, WIDTH,
 };
 
 #[derive(Module, Debug)]
-pub struct FuseUNet<B: Backend> {
+pub struct MyModel<B: Backend> {
     mouse_embedder: MouseEmbedder<B>,
     keys_embedder: KeyboardEmbedder<B>,
     inc: ConvFusionBlock<B>,
@@ -25,26 +28,26 @@ pub struct FuseUNet<B: Backend> {
     // up2: UpBlock<B>,
     // up3: UpBlock<B>,
     // up4: UpBlock<B>,
-    // out_conv: Conv2d<B>,
-    // adaptive_pool: AdaptiveAvgPool2d,
+    out_conv: Conv2d<B>,
+    adaptive_pool: AdaptiveAvgPool2d,
 }
 
 #[derive(Config, Debug)]
-pub struct FuseUNetConfig {
+pub struct MyModelConfig {
     #[config(default = "4")]
     in_channels: usize,
-    #[config(default = "64")]
+    #[config(default = "32")]
     base_channels: usize,
     #[config(default = "4")]
     out_channels: usize,
-    #[config(default = "128")]
+    #[config(default = "32")]
     embed_dim: usize,
 }
 
-impl FuseUNetConfig {
+impl MyModelConfig {
     /// Returns the initialized model.
-    pub fn init<B: Backend>(&self, device: &B::Device) -> FuseUNet<B> {
-        FuseUNet {
+    pub fn init<B: Backend>(&self, device: &B::Device) -> MyModel<B> {
+        MyModel {
             mouse_embedder: MouseEmbedderConfig::new(self.embed_dim).init(device),
             keys_embedder: KeyboardEmbedderConfig::new(self.embed_dim).init(device),
             inc: ConvFusionBlockConfig::new(self.in_channels, self.base_channels, self.embed_dim)
@@ -90,14 +93,14 @@ impl FuseUNetConfig {
             // .init(device),
             // up4: UpBlockConfig::new(self.base_channels * 2, self.base_channels, self.embed_dim)
             //     .init(device),
-            // out_conv: Conv2dConfig::new([self.base_channels, self.out_channels], [1, 1])
-            //     .init(device),
-            // adaptive_pool: AdaptiveAvgPool2dConfig::new([200, 200]).init(),
+            out_conv: Conv2dConfig::new([self.base_channels, self.out_channels], [1, 1])
+                .init(device),
+            adaptive_pool: AdaptiveAvgPool2dConfig::new([HEIGHT, WIDTH]).init(),
         }
     }
 }
 
-impl<B: Backend> FuseUNet<B> {
+impl<B: Backend> MyModel<B> {
     pub fn forward(
         &self,
         images: Tensor<B, 4>,
@@ -130,7 +133,8 @@ impl<B: Backend> FuseUNet<B> {
         // out
 
         let x = self.inc.forward(images.clone(), embed.clone());
-        let x = images + x;
+        let x = self.out_conv.forward(x);
+        let x = self.adaptive_pool.forward(x);
 
         x
     }

@@ -77,7 +77,7 @@ fn update(state: &mut State, message: Message) {
             state.image = Some(match &state.image {
                 Some(image_handle) => generate_frame(image_handle, keys, mouse),
                 None => generate_frame(
-                    &image::Handle::from_path("data/images/test/out1.png"),
+                    &image::Handle::from_path("data/images/test/out_0100.png"),
                     keys,
                     mouse,
                 ),

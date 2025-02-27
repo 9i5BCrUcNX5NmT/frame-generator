@@ -1,5 +1,6 @@
 use ::image::{open, DynamicImage, GenericImage, Rgba};
 use iced::{widget::image, Point};
+use model_training::{HEIGHT, WIDTH};
 
 pub fn key_to_string(named: iced::keyboard::key::Named) -> String {
     match named {
@@ -341,7 +342,7 @@ pub fn generate_frame(
 
                     t += 4;
 
-                    image.put_pixel(j as u32, i as u32, pixel);
+                    image.put_pixel(j, i, pixel);
                 }
             }
 
@@ -356,5 +357,5 @@ pub fn generate_frame(
 
     let image = model_training::inference::generate(&current_image, keys, mouse);
 
-    image::Handle::from_rgba(200, 200, image.into_bytes())
+    image::Handle::from_rgba(WIDTH as u32, HEIGHT as u32, image.into_bytes())
 }

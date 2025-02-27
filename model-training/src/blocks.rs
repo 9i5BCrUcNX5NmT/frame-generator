@@ -6,6 +6,8 @@ use burn::nn::{Linear, LinearConfig, Relu};
 use burn::tensor::backend::Backend;
 use burn::tensor::Tensor;
 
+use crate::MOUSE_VECTOR_LENGTH;
+
 #[derive(Module, Debug)]
 pub struct ConvFusionBlock<B: Backend> {
     conv1: Conv2d<B>,
@@ -167,7 +169,7 @@ pub struct MouseEmbedderConfig {
 impl MouseEmbedderConfig {
     pub fn init<B: Backend>(&self, device: &B::Device) -> MouseEmbedder<B> {
         MouseEmbedder {
-            linear1: LinearConfig::new(2 * 200, 256).init(device),
+            linear1: LinearConfig::new(2 * MOUSE_VECTOR_LENGTH, 256).init(device),
             activation: Relu,
             linear2: LinearConfig::new(256, self.embed_dim).init(device),
         }
@@ -177,7 +179,7 @@ impl MouseEmbedderConfig {
 impl<B: Backend> MouseEmbedder<B> {
     /// Normal method added to a struct.
     pub fn forward(&self, mouse: Tensor<B, 3>) -> Tensor<B, 2> {
-        let x = mouse.flatten(1, 2); // [n, 2, 200] -> [n, 400]
+        let x = mouse.flatten(1, 2); // [n, 2, MOUSE_VECTOR_LENGTH] -> [n, MOUSE_VECTOR_LENGTH * 2]
         let x = self.linear1.forward(x);
         let x = self.activation.forward(x);
         let x = self.linear2.forward(x);

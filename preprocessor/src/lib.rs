@@ -1,4 +1,5 @@
 use images::process_images;
+use model_training::{HEIGHT, WIDTH};
 
 mod images;
 mod videos;
@@ -14,8 +15,5 @@ pub fn run() {
     let output_dir = "data/images/resized_images"; // Путь к выходной папке для сохранения измененных изображений
     std::fs::create_dir_all("data/images/resized_images").unwrap();
 
-    let width = 200;
-    let height = 200;
-
-    process_images(input_dir, output_dir, width, height).unwrap();
+    process_images(input_dir, output_dir, WIDTH as u32, HEIGHT as u32).unwrap();
 }
