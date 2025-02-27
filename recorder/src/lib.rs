@@ -12,9 +12,9 @@ use video_recorder::VideoRecorder;
 mod keys_recorder;
 mod video_recorder;
 
-pub const DATA_DIR: &str = "data/";
+pub(crate) const DATA_DIR: &str = "data/";
 
-fn main() {
+pub fn run() {
     std::fs::create_dir_all(DATA_DIR.to_owned() + "keys").unwrap();
     std::fs::create_dir_all(DATA_DIR.to_owned() + "videos").unwrap();
 
@@ -34,7 +34,7 @@ fn main() {
     let vider_recorder = VideoRecorder::start_recording();
     let vider_recorder_clone = vider_recorder.clone();
 
-    thread::spawn(move || {
+    thread::spawn(|| {
         listen(move |event| {
             keys_recorder_clone.lock().unwrap().insert_key(&event);
             vider_recorder_clone.lock().unwrap().control_capture(&event);

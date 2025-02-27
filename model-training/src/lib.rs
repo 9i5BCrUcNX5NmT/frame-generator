@@ -1,8 +1,8 @@
+mod blocks;
 mod csv_processing;
 mod data;
 mod images;
 pub mod inference;
-mod models;
-mod modules;
+mod model;
 pub mod training;
 mod types;

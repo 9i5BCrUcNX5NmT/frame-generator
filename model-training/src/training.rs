@@ -2,7 +2,7 @@ use crate::{
     csv_processing::load_keys_from_directory,
     data::{FrameBatch, FrameBatcher},
     images::{convert_images_to_image_pixel_data, load_images_from_directory},
-    models::{FuseUNet, FuseUNetConfig},
+    model::{FuseUNet, FuseUNetConfig},
     types::MyData,
 };
 use burn::{

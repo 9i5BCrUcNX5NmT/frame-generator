@@ -1,10 +1,12 @@
 [package]
-name = "ui_frames"
+name = "ui"
 version = "0.1.0"
 edition = "2021"
+default-run = "ui"
 
 [dependencies]
 burn = { version = "0.16.0", default-features = false }
 iced = { version = "0.13.1", features = ["image"] }
 image = "0.25.5"
 model-training = { path = "../model-training" }
+recorder = { path = "../recorder" }

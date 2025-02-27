@@ -1,13 +1,13 @@
 use burn::config::Config;
 use burn::module::Module;
 use burn::nn::conv::{Conv2d, Conv2dConfig, ConvTranspose2d, ConvTranspose2dConfig};
-use burn::nn::pool::{AdaptiveAvgPool2d, AdaptiveAvgPool2dConfig, MaxPool2d, MaxPool2dConfig};
+use burn::nn::pool::{MaxPool2d, MaxPool2dConfig};
 use burn::nn::{Linear, LinearConfig, Relu};
 use burn::tensor::backend::Backend;
 use burn::tensor::Tensor;
 
 #[derive(Module, Debug)]
-pub struct ConvFusionModule<B: Backend> {
+pub struct ConvFusionBlock<B: Backend> {
     conv1: Conv2d<B>,
     activation1: Relu,
     conv2: Conv2d<B>,
@@ -15,15 +15,15 @@ pub struct ConvFusionModule<B: Backend> {
 }
 
 #[derive(Config, Debug)]
-pub struct ConvFusionModuleConfig {
+pub struct ConvFusionBlockConfig {
     in_channels: usize,
     out_channels: usize,
     embed_dim: usize,
 }
 
-impl ConvFusionModuleConfig {
-    pub fn init<B: Backend>(&self, device: &B::Device) -> ConvFusionModule<B> {
-        ConvFusionModule {
+impl ConvFusionBlockConfig {
+    pub fn init<B: Backend>(&self, device: &B::Device) -> ConvFusionBlock<B> {
+        ConvFusionBlock {
             conv1: Conv2dConfig::new(
                 [self.in_channels + self.embed_dim, self.out_channels],
                 [3, 3],
@@ -36,7 +36,7 @@ impl ConvFusionModuleConfig {
     }
 }
 
-impl<B: Backend> ConvFusionModule<B> {
+impl<B: Backend> ConvFusionBlock<B> {
     /// Normal method added to a struct.
     pub fn forward(&self, input: Tensor<B, 4>, embed: Tensor<B, 2>) -> Tensor<B, 4> {
         let [batch_size, _channels, height, width] = input.dims();
@@ -57,29 +57,29 @@ impl<B: Backend> ConvFusionModule<B> {
 }
 
 #[derive(Module, Debug)]
-pub struct DownModule<B: Backend> {
+pub struct DownBlock<B: Backend> {
     pool: MaxPool2d,
-    conv: ConvFusionModule<B>,
+    conv: ConvFusionBlock<B>,
 }
 
 #[derive(Config, Debug)]
-pub struct DownModuleConfig {
+pub struct DownBlockConfig {
     in_channels: usize,
     out_channels: usize,
     embed_dim: usize,
 }
 
-impl DownModuleConfig {
-    pub fn init<B: Backend>(&self, device: &B::Device) -> DownModule<B> {
-        DownModule {
+impl DownBlockConfig {
+    pub fn init<B: Backend>(&self, device: &B::Device) -> DownBlock<B> {
+        DownBlock {
             pool: MaxPool2dConfig::new([2, 2]).init(),
-            conv: ConvFusionModuleConfig::new(self.in_channels, self.out_channels, self.embed_dim)
+            conv: ConvFusionBlockConfig::new(self.in_channels, self.out_channels, self.embed_dim)
                 .init(device),
         }
     }
 }
 
-impl<B: Backend> DownModule<B> {
+impl<B: Backend> DownBlock<B> {
     /// Normal method added to a struct.
     pub fn forward(&self, input: Tensor<B, 4>, embed: Tensor<B, 2>) -> Tensor<B, 4> {
         let x = self.pool.forward(input.clone());
@@ -90,24 +90,24 @@ impl<B: Backend> DownModule<B> {
 }
 
 #[derive(Module, Debug)]
-pub struct UpModule<B: Backend> {
+pub struct UpBlock<B: Backend> {
     up: ConvTranspose2d<B>,
-    conv: ConvFusionModule<B>,
+    conv: ConvFusionBlock<B>,
 }
 
 #[derive(Config, Debug)]
-pub struct UpModuleConfig {
+pub struct UpBlockConfig {
     in_channels: usize,
     out_channels: usize,
     embed_dim: usize,
 }
 
-impl UpModuleConfig {
-    pub fn init<B: Backend>(&self, device: &B::Device) -> UpModule<B> {
-        UpModule {
+impl UpBlockConfig {
+    pub fn init<B: Backend>(&self, device: &B::Device) -> UpBlock<B> {
+        UpBlock {
             up: ConvTranspose2dConfig::new([self.in_channels, self.out_channels], [2, 2])
                 .init(device),
-            conv: ConvFusionModuleConfig::new(
+            conv: ConvFusionBlockConfig::new(
                 self.out_channels * 2,
                 self.out_channels,
                 self.embed_dim,
@@ -117,7 +117,7 @@ impl UpModuleConfig {
     }
 }
 
-impl<B: Backend> UpModule<B> {
+impl<B: Backend> UpBlock<B> {
     /// Normal method added to a struct.
     pub fn forward(
         &self,
