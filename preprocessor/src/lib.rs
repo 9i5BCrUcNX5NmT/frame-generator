@@ -3,7 +3,7 @@ use images::process_images;
 mod images;
 mod videos;
 
-fn main() {
+pub fn run() {
     let output_dir = "data/images/raw"; // Путь к выходной папке с изображениями
     std::fs::create_dir_all("data/images/raw").unwrap();
 

@@ -15,6 +15,7 @@ enum Message {
     ReloadImage,
     ModelTraining,
     Record,
+    Preprocess,
 }
 
 #[derive(Default)]
@@ -35,7 +36,8 @@ fn view(state: &State) -> Element<Message> {
         row![
             button(text("Генерация")).on_press(Message::ReloadImage),
             button(text("Тренировка")).on_press(Message::ModelTraining),
-            button(text("Запись")).on_press(Message::Record)
+            button(text("Запись")).on_press(Message::Record),
+            button(text("Обработать")).on_press(Message::Preprocess)
         ]
         .spacing(20)
     ]
@@ -86,6 +88,9 @@ fn update(state: &mut State, message: Message) {
         }
         Message::Record => {
             thread::spawn(|| recorder::run());
+        }
+        Message::Preprocess => {
+            thread::spawn(|| preprocessor::run());
         }
     };
 }
