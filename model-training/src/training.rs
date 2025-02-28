@@ -6,7 +6,7 @@ use crate::{
     types::MyData,
 };
 use burn::{
-    backend::{cuda_jit::CudaDevice, Autodiff, CudaJit},
+    backend::{cuda_jit::CudaDevice, wgpu::WgpuDevice, Autodiff, CudaJit, Wgpu},
     data::{dataloader::DataLoaderBuilder, dataset::InMemDataset},
     optim::AdamConfig,
     prelude::*,
@@ -69,9 +69,9 @@ pub(crate) struct TrainingConfig {
     pub optimizer: AdamConfig,
     #[config(default = 15)]
     pub num_epochs: usize,
-    #[config(default = 64)]
+    #[config(default = 8)]
     pub batch_size: usize,
-    #[config(default = 16)]
+    #[config(default = 4)]
     pub num_workers: usize,
     #[config(default = 42)]
     pub seed: u64,
@@ -164,16 +164,17 @@ fn train<B: AutodiffBackend>(artifact_dir: &str, config: TrainingConfig, device:
 }
 
 pub fn run() {
-    // type MyBackend = Wgpu<f32, i32>;
-    // type MyAutodiffBackend = Autodiff<MyBackend>;
-
-    // let device = burn::backend::wgpu::WgpuDevice::default();
     let artifact_dir = "tmp/test";
 
-    type MyBackend = CudaJit<f32, i32>;
+    type MyBackend = Wgpu<f32, i32>;
     type MyAutodiffBackend = Autodiff<MyBackend>;
 
-    let device = CudaDevice::default();
+    let device = WgpuDevice::default();
+
+    // type MyBackend = CudaJit<f32, i32>;
+    // type MyAutodiffBackend = Autodiff<MyBackend>;
+
+    // let device = CudaDevice::default();
 
     crate::training::train::<MyAutodiffBackend>(
         artifact_dir,
