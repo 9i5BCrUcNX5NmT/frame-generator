@@ -36,8 +36,8 @@ pub fn save_image(image: &DynamicImage, output_path: &Path) {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct MyImage<const width: usize, const height: usize> {
-    pub pixels: [[[u8; width]; height]; 4],
+pub struct MyImage<const WIDTH: usize, const HEIGHT: usize> {
+    pub pixels: [[[u8; WIDTH]; HEIGHT]; 4],
 }
 
 impl<const W: usize, const H: usize> MyImage<W, H> {
