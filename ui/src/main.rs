@@ -102,7 +102,7 @@ fn update(state: &mut State, message: Message) {
         Message::ReloadImage => {
             state.image = Some(image::Handle::from_path("data/images/test/out_0001.png"))
         }
-        Message::Test => preprocessor::write_my_data(),
+        Message::Test => preprocessor::read_my_data(),
     };
 }
 

@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{fs, io, path::PathBuf};
 
 use burn::tensor::TensorData;
 use hdf5_metno::{File, Result};
@@ -29,4 +29,32 @@ pub fn write_data(data_path: &PathBuf, my_data: MyConstData) -> Result<()> {
     // // write the attr data
     // attr.write(&[R, G, B])?;
     Ok(())
+}
+
+pub fn read_data(data_path: &PathBuf) -> io::Result<Vec<MyConstData>> {
+    let mut dataset = Vec::new();
+
+    for entry in fs::read_dir(data_path)? {
+        let entry = entry?;
+        let path = entry.path();
+
+        if path.is_file() {
+            // let mut reader = csv::Reader::from_path(path).unwrap();
+            // for result in reader.deserialize() {
+            //     let record: CsvRecord = result.unwrap();
+            //     let keys_record = parse_csv_record(record);
+
+            //     dataset.push(keys_record);
+            // }
+
+            let file = File::open(path)?; // open for reading
+            let ds = file.dataset("dir/data")?; // open the dataset
+
+            let a = ds.read_1d::<MyConstData>().unwrap();
+
+            dataset.push(a[0].clone());
+        }
+    }
+
+    Ok(dataset)
 }

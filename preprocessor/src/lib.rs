@@ -1,15 +1,15 @@
 use std::{path::PathBuf, str::FromStr};
 
-use converter::write_data;
 use csv_processing::load_records_from_directory;
+use hdf5_processing::{read_data, write_data};
 use image::DynamicImage;
 use images::{process_images, MyImage};
 use model_training::{HEIGHT, WIDTH};
 use types::MyConstData;
 use videos::process_videos;
 
-mod converter;
 mod csv_processing;
+mod hdf5_processing;
 mod images;
 mod types;
 mod videos;
@@ -40,4 +40,11 @@ pub fn write_my_data() {
         keys_record: mydatas[0].clone(),
     };
     write_data(&data_path.join("preprocessor"), my_data).unwrap();
+}
+
+pub fn read_my_data() {
+    let data_path = &PathBuf::from_str("data").unwrap();
+
+    let a = read_data(&data_path.join("preprocessor")).unwrap();
+    println!("{:?}", a[0]);
 }

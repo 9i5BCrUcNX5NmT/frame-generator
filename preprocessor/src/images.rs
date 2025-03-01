@@ -1,5 +1,5 @@
 use std::{
-    fs, io,
+    fmt, fs, io,
     path::{Path, PathBuf},
 };
 
@@ -81,10 +81,17 @@ pub fn process_images(
     Ok(())
 }
 
-#[derive(Debug, Clone, Copy, H5Type)]
+#[derive(Clone, Copy, H5Type)]
 #[repr(C)]
 pub struct MyImage<const HEIGHT: usize, const WIDTH: usize> {
     pub pixels: [[[u8; WIDTH]; HEIGHT]; 4],
+}
+
+impl<const H: usize, const W: usize> fmt::Debug for MyImage<H, W> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // Здесь вы можете настроить вывод по своему усмотрению
+        write!(f, "Image[{} x {}]", H, W)
+    }
 }
 
 impl<const H: usize, const W: usize> MyImage<H, W> {
