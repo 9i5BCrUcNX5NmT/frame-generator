@@ -166,15 +166,15 @@ fn train<B: AutodiffBackend>(artifact_dir: &str, config: TrainingConfig, device:
 pub fn run() {
     let artifact_dir = "tmp/test";
 
-    // type MyBackend = Wgpu<f32, i32>;
-    // type MyAutodiffBackend = Autodiff<MyBackend>;
-
-    // let device = WgpuDevice::default();
-
-    type MyBackend = CudaJit<f32, i32>;
+    type MyBackend = Wgpu<f32, i32>;
     type MyAutodiffBackend = Autodiff<MyBackend>;
 
-    let device = CudaDevice::default();
+    let device = WgpuDevice::default();
+
+    // type MyBackend = CudaJit<f32, i32>;
+    // type MyAutodiffBackend = Autodiff<MyBackend>;
+
+    // let device = CudaDevice::default();
 
     crate::training::train::<MyAutodiffBackend>(
         artifact_dir,

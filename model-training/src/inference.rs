@@ -42,7 +42,7 @@ fn infer<B: Backend>(artifact_dir: &str, device: B::Device, item: MyData) -> Vec
             let mut pixels: [[[u8; WIDTH]; HEIGHT]; 4] = [[[0; WIDTH]; HEIGHT]; 4];
 
             for (color_index, i) in vector.chunks(HEIGHT * WIDTH).enumerate() {
-                for (height, j) in i.chunks(HEIGHT).enumerate() {
+                for (height, j) in i.chunks(WIDTH).enumerate() {
                     for (width, k) in j.iter().enumerate() {
                         pixels[color_index][height][width] = *k as u8;
                     }
@@ -77,11 +77,11 @@ pub fn generate(
     let artifact_dir = "tmp/test";
     // let image_path = "tmp/test/output";
 
-    // type MyBackend = Wgpu<f32, i32>;
-    // let device = WgpuDevice::default();
+    type MyBackend = Wgpu<f32, i32>;
+    let device = WgpuDevice::default();
 
-    type MyBackend = CudaJit<f32, i32>;
-    let device = CudaDevice::default();
+    // type MyBackend = CudaJit<f32, i32>;
+    // let device = CudaDevice::default();
 
     // TODO: хз
     // let image_path = Path::new(image_path).to_path_buf();

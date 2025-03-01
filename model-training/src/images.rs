@@ -61,7 +61,7 @@ impl<const H: usize, const W: usize> MyImage<H, W> {
                     self.pixels[3][i][j],
                 ]);
 
-                img.put_pixel(i as u32, j as u32, pixel);
+                img.put_pixel(j as u32, i as u32, pixel);
             }
         }
 
