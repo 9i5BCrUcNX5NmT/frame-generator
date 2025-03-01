@@ -16,8 +16,10 @@ enum Message {
     ReloadImage,
     ModelTraining,
     Record,
-    Preprocess,
-    Test,
+    VideoProcessing,
+    FramesProcessing,
+    WriteData,
+    ReadData,
 }
 
 #[derive(Default)]
@@ -38,13 +40,21 @@ fn view(state: &State) -> Element<Message> {
         // .content_fit(iced::ContentFit::Fill),
         .width(Length::Fill)
         .height(Length::Fill),
-        row![
-            button(text("Генерация")).on_press(Message::GenerateImage),
-            button(text("Сбросить изображение")).on_press(Message::ReloadImage),
-            button(text("Тренировка")).on_press(Message::ModelTraining),
-            button(text("Запись")).on_press(Message::Record),
-            button(text("Обработать")).on_press(Message::Preprocess),
-            button(text("Test")).on_press(Message::Test),
+        column![
+            row![
+                button(text("Генерация")).on_press(Message::GenerateImage),
+                button(text("Сбросить изображение")).on_press(Message::ReloadImage),
+            ],
+            row![
+                button(text("Запись")).on_press(Message::Record),
+                button(text("Извлечь кадры из видео")).on_press(Message::VideoProcessing),
+                button(text("Обработать кадры")).on_press(Message::FramesProcessing),
+            ],
+            row![
+                button(text("Тренировка")).on_press(Message::ModelTraining),
+                button(text("WriteData")).on_press(Message::WriteData),
+                button(text("ReadData")).on_press(Message::ReadData),
+            ]
         ]
         .spacing(20)
     ]
@@ -96,13 +106,17 @@ fn update(state: &mut State, message: Message) {
         Message::Record => {
             thread::spawn(|| recorder::run());
         }
-        Message::Preprocess => {
-            thread::spawn(|| preprocessor::run());
+        Message::VideoProcessing => {
+            thread::spawn(|| preprocessor::process_my_videos());
+        }
+        Message::FramesProcessing => {
+            thread::spawn(|| preprocessor::process_my_images());
         }
         Message::ReloadImage => {
             state.image = Some(image::Handle::from_path("data/images/test/out_0001.png"))
         }
-        Message::Test => preprocessor::write_my_data(),
+        Message::WriteData => preprocessor::write_my_data(),
+        Message::ReadData => preprocessor::read_my_data(),
     };
 }
 

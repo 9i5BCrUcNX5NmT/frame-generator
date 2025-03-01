@@ -1,26 +1,27 @@
 use std::{path::PathBuf, str::FromStr};
 
-use converter::write_data;
 use csv_processing::load_records_from_directory;
+use hdf5_processing::{read_data, write_data};
 use image::DynamicImage;
 use images::{process_images, MyImage};
 use model_training::{HEIGHT, WIDTH};
 use types::MyConstData;
 use videos::process_videos;
 
-mod converter;
 mod csv_processing;
+mod hdf5_processing;
 mod images;
 mod types;
 mod videos;
 
-pub fn run() {
-    let output_dir = "data/images/raw"; // Путь к выходной папке с изображениями
+pub fn process_my_videos() {
     std::fs::create_dir_all("data/images/raw").unwrap();
 
     process_videos("data/videos/video.mp4", "data/images/raw/");
+}
 
-    let input_dir = output_dir; // Путь к входной папке с изображениями
+pub fn process_my_images() {
+    let input_dir = "data/images/raw"; // Путь к входной папке с изображениями
 
     let output_dir = "data/images/resized_images"; // Путь к выходной папке для сохранения измененных изображений
     std::fs::create_dir_all("data/images/resized_images").unwrap();
@@ -29,7 +30,8 @@ pub fn run() {
 }
 
 pub fn write_my_data() {
-    let data_path = &PathBuf::from_str("data").unwrap();
+    let data_path = PathBuf::from_str("data").unwrap();
+
     let mydatas = load_records_from_directory(&data_path.join("keys")).unwrap();
     let my_data = MyConstData {
         image: MyImage::from_image(&DynamicImage::new(
@@ -39,5 +41,17 @@ pub fn write_my_data() {
         )),
         keys_record: mydatas[0].clone(),
     };
-    write_data(&data_path.join("preprocessor"), my_data).unwrap();
+
+    let data_path = &data_path.join("preprocessor");
+    std::fs::create_dir_all(data_path).unwrap();
+
+    write_data(&data_path, my_data).unwrap();
+}
+
+pub fn read_my_data() {
+    let data_path = PathBuf::from_str("data").unwrap();
+    let data_path = &data_path.join("preprocessor");
+
+    let a = read_data(data_path).unwrap();
+    println!("{:?}\n\n", a);
 }
