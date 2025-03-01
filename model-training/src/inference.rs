@@ -30,7 +30,7 @@ fn infer<B: Backend>(artifact_dir: &str, device: B::Device, item: MyData) -> Vec
     let batch = batcher.batch(vec![item]);
     let output = model.forward(batch.images, batch.keys, batch.mouse);
 
-    let images_data: Vec<MyImage<WIDTH, HEIGHT>> = output
+    let images_data: Vec<MyImage<HEIGHT, WIDTH>> = output
         .iter_dim(0)
         // Возвращение из нормализации
         .map(|tensor| tensor * 255)

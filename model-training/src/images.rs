@@ -31,16 +31,12 @@ fn load_image(image_data: &ImageData) -> DynamicImage {
     image::open(&image_data.image_path).expect("Failed to open image")
 }
 
-pub fn save_image(image: &DynamicImage, output_path: &Path) {
-    image.save(output_path).expect("Failed to save image");
-}
-
 #[derive(Debug, Clone, Copy)]
-pub struct MyImage<const WIDTH: usize, const HEIGHT: usize> {
+pub struct MyImage<const HEIGHT: usize, const WIDTH: usize> {
     pub pixels: [[[u8; WIDTH]; HEIGHT]; 4],
 }
 
-impl<const W: usize, const H: usize> MyImage<W, H> {
+impl<const H: usize, const W: usize> MyImage<H, W> {
     pub fn from_image(image: &DynamicImage) -> Self {
         let mut pixels: [[[u8; W]; H]; 4] = [[[0; W]; H]; 4];
 
@@ -82,7 +78,7 @@ pub fn convert_images_to_image_pixel_data(images: Vec<ImageData>) -> Vec<MyImage
 }
 
 pub fn convert_image_pixel_data_to_images(
-    images_data: Vec<MyImage<WIDTH, HEIGHT>>,
+    images_data: Vec<MyImage<HEIGHT, WIDTH>>,
 ) -> Vec<DynamicImage> {
     images_data
         .iter()
