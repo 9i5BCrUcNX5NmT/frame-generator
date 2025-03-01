@@ -3,7 +3,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use image::DynamicImage;
+use hdf5_metno::H5Type;
+use image::{DynamicImage, GenericImageView, Rgba, RgbaImage};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
 pub struct ImageData {
@@ -79,3 +80,59 @@ pub fn process_images(
 
     Ok(())
 }
+
+#[derive(Debug, Clone, Copy, H5Type)]
+#[repr(C)]
+pub struct MyImage<const HEIGHT: usize, const WIDTH: usize> {
+    pub pixels: [[[u8; WIDTH]; HEIGHT]; 4],
+}
+
+impl<const H: usize, const W: usize> MyImage<H, W> {
+    pub fn from_image(image: &DynamicImage) -> Self {
+        let mut pixels: [[[u8; W]; H]; 4] = [[[0; W]; H]; 4];
+
+        for (height, width, colors) in image.pixels() {
+            for (i, color) in colors.0.iter().enumerate() {
+                pixels[i][height as usize][width as usize] = *color;
+            }
+        }
+
+        MyImage { pixels }
+    }
+
+    pub fn to_image(&self) -> DynamicImage {
+        let mut img = RgbaImage::new(W as u32, H as u32);
+
+        for i in 0..H {
+            for j in 0..W {
+                let pixel = Rgba([
+                    self.pixels[0][i][j],
+                    self.pixels[1][i][j],
+                    self.pixels[2][i][j],
+                    self.pixels[3][i][j],
+                ]);
+
+                img.put_pixel(i as u32, j as u32, pixel);
+            }
+        }
+
+        image::DynamicImage::ImageRgba8(img)
+    }
+}
+
+// pub fn convert_images_to_image_pixel_data(images: Vec<ImageData>) -> Vec<MyImage<WIDTH, HEIGHT>> {
+//     images
+//         .iter()
+//         .map(|image_data| load_image(image_data))
+//         .map(|image| MyImage::from_image(&image))
+//         .collect()
+// }
+
+// pub fn convert_image_pixel_data_to_images(
+//     images_data: Vec<MyImage<WIDTH, HEIGHT>>,
+// ) -> Vec<DynamicImage> {
+//     images_data
+//         .iter()
+//         .map(|image_data| image_data.to_image())
+//         .collect()
+// }

@@ -17,6 +17,7 @@ enum Message {
     ModelTraining,
     Record,
     Preprocess,
+    Test,
 }
 
 #[derive(Default)]
@@ -42,7 +43,8 @@ fn view(state: &State) -> Element<Message> {
             button(text("Сбросить изображение")).on_press(Message::ReloadImage),
             button(text("Тренировка")).on_press(Message::ModelTraining),
             button(text("Запись")).on_press(Message::Record),
-            button(text("Обработать")).on_press(Message::Preprocess)
+            button(text("Обработать")).on_press(Message::Preprocess),
+            button(text("Test")).on_press(Message::Test),
         ]
         .spacing(20)
     ]
@@ -100,6 +102,7 @@ fn update(state: &mut State, message: Message) {
         Message::ReloadImage => {
             state.image = Some(image::Handle::from_path("data/images/test/out_0001.png"))
         }
+        Message::Test => preprocessor::write_my_data(),
     };
 }
 
