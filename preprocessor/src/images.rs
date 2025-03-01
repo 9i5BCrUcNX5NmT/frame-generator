@@ -23,7 +23,7 @@ pub fn save_image(image: &DynamicImage, output_path: &Path) {
     image.save(output_path).expect("Failed to save image");
 }
 
-pub fn load_images_from_directory(dir: &str) -> io::Result<Vec<ImageData>> {
+pub fn load_images_from_directory(dir: &PathBuf) -> io::Result<Vec<ImageData>> {
     let mut dataset = Vec::new();
 
     for entry in fs::read_dir(dir)? {
@@ -40,8 +40,8 @@ pub fn load_images_from_directory(dir: &str) -> io::Result<Vec<ImageData>> {
 }
 
 pub fn process_images(
-    input_dir: &str,
-    output_dir: &str,
+    input_dir: &PathBuf,
+    output_dir: &PathBuf,
     width: u32,
     height: u32,
 ) -> io::Result<()> {
@@ -125,18 +125,25 @@ impl<const H: usize, const W: usize> MyImage<H, W> {
 
         image::DynamicImage::ImageRgba8(img)
     }
+
+    pub fn from_image_data(image_data: &ImageData) -> MyImage<H, W> {
+        let image = load_image(image_data);
+
+        MyImage::from_image(&image)
+    }
 }
 
-// pub fn convert_images_to_image_pixel_data(images: Vec<ImageData>) -> Vec<MyImage<WIDTH, HEIGHT>> {
+// pub fn from_images_data<const H: usize, const W: usize>(
+//     images: Vec<ImageData>,
+// ) -> Vec<MyImage<H, W>> {
 //     images
 //         .iter()
-//         .map(|image_data| load_image(image_data))
-//         .map(|image| MyImage::from_image(&image))
+//         .map(|image_data| MyImage::from_image_data(image_data))
 //         .collect()
 // }
 
-// pub fn convert_image_pixel_data_to_images(
-//     images_data: Vec<MyImage<WIDTH, HEIGHT>>,
+// pub fn to_dynamic_image<const H: usize, const W: usize>(
+//     images_data: Vec<MyImage<H, W>>,
 // ) -> Vec<DynamicImage> {
 //     images_data
 //         .iter()
