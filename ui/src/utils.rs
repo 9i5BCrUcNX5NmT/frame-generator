@@ -376,17 +376,20 @@ pub fn check_data(state: &mut State) {
     let data_path = PathBuf::from_str("data").unwrap();
     let images_path = data_path.join("images");
 
-    state.data_status.video = check_dir_not_empty(data_path.join("videos"));
+    state.data_status.video = check_dir_not_empty(&data_path.join("videos"));
 
-    state.data_status.images_from_frames = check_dir_not_empty(images_path.join("raw"));
+    state.data_status.images_from_frames = check_dir_not_empty(&images_path.join("raw"));
 
-    state.data_status.resized_images = check_dir_not_empty(images_path.join("resized_images"));
+    state.data_status.resized_images = check_dir_not_empty(&images_path.join("resized_images"));
 
-    state.data_status.test_and_train = check_dir_not_empty(images_path.join("test"))
-        && check_dir_not_empty(images_path.join("train"));
+    state.data_status.test_and_train = check_dir_not_empty(&images_path.join("test"))
+        && check_dir_not_empty(&images_path.join("train"));
 }
 
-fn check_dir_not_empty(dir: PathBuf) -> bool {
+fn check_dir_not_empty(dir: &PathBuf) -> bool {
+    // Что бы было
+    fs::create_dir_all(dir).unwrap();
+
     match fs::read_dir(dir) {
         Ok(entries) =>
         // Итерируемся по записям в директории
