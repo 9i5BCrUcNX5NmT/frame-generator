@@ -110,8 +110,8 @@ impl<const H: usize, const W: usize> MyImage<H, W> {
     pub fn to_image(&self) -> DynamicImage {
         let mut img = RgbaImage::new(W as u32, H as u32);
 
-        for i in 0..H {
-            for j in 0..W {
+        for i in 0..W {
+            for j in 0..H {
                 let pixel = Rgba([
                     self.pixels[0][i][j],
                     self.pixels[1][i][j],

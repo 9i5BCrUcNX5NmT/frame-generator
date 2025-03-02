@@ -8,16 +8,25 @@ use burn::{
 };
 use common::*;
 use image::DynamicImage;
-
-use crate::{
-    csv_processing::{key_to_num, KeysRecord},
-    data::FrameBatcher,
-    images::{convert_image_pixel_data_to_images, MyImage},
-    training::TrainingConfig,
-    types::MyData,
+use preprocessor::{
+    csv_processing::{key_to_num, KeysRecordConst},
+    images::MyImage,
+    types::MyConstData,
 };
 
-fn infer<B: Backend>(artifact_dir: &str, device: B::Device, item: MyData) -> Vec<DynamicImage> {
+use crate::{
+    // csv_processing::{key_to_num, KeysRecord},
+    data::FrameBatcher,
+    // images::{convert_image_pixel_data_to_images, MyImage},
+    training::TrainingConfig,
+    // types::MyData,
+};
+
+fn infer<B: Backend>(
+    artifact_dir: &str,
+    device: B::Device,
+    item: MyConstData,
+) -> Vec<DynamicImage> {
     let config = TrainingConfig::load(format!("{artifact_dir}/config.json"))
         .expect("Config should exist for the model");
     let record = CompactRecorder::new()
@@ -30,7 +39,7 @@ fn infer<B: Backend>(artifact_dir: &str, device: B::Device, item: MyData) -> Vec
     let batch = batcher.batch(vec![item]);
     let output = model.forward(batch.images, batch.keys, batch.mouse);
 
-    let images_data: Vec<MyImage<HEIGHT, WIDTH>> = output
+    let images: Vec<MyImage<HEIGHT, WIDTH>> = output
         .iter_dim(0)
         // Возвращение из нормализации
         .map(|tensor| tensor * 255)
@@ -55,18 +64,9 @@ fn infer<B: Backend>(artifact_dir: &str, device: B::Device, item: MyData) -> Vec
         })
         .collect();
 
-    let images = convert_image_pixel_data_to_images(images_data);
+    let dynamic_images = images.iter().map(|image| image.to_image()).collect();
 
-    // // Создаем выходную директорию, если она не существует
-    // let output_str = format!("{artifact_dir}/output");
-    // let output_dir = Path::new(&output_str);
-    // fs::create_dir_all(output_dir).unwrap();
-
-    // images::save_image(&images[0], &output_dir.join(format!("image.png")));
-
-    // println!("Predicted {} ", output);
-
-    images
+    dynamic_images
 }
 
 pub fn generate(
@@ -88,16 +88,34 @@ pub fn generate(
     // let image_data = load_images_from_directory(image_path).unwrap();
     let image_pixel_data = MyImage::from_image(current_image);
 
-    let keys = keys
-        .iter()
+    // TODO: мб пофиксить?
+    // Да не, пока норм вроде
+
+    let keys: Vec<u8> = keys
+        .into_iter()
         .filter(|key| !key.is_empty())
         .map(|key| key.to_lowercase())
         .map(|key| key_to_num(&key))
         .collect();
 
-    let item = MyData {
+    let mut const_keys: [u8; 200] = [0; 200];
+
+    for (i, value) in keys.iter().enumerate() {
+        const_keys[i] = *value;
+    }
+
+    let mut const_mouse: [[i32; 2]; 200] = [[0; 2]; 200];
+
+    for (i, value) in mouse.iter().enumerate() {
+        const_mouse[i] = *value;
+    }
+
+    let item = MyConstData {
         image: image_pixel_data,
-        keys: KeysRecord { keys, mouse },
+        keys_record: KeysRecordConst {
+            keys: const_keys,
+            mouse: const_mouse,
+        },
     };
 
     let next_image =

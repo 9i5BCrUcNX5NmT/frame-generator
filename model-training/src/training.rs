@@ -1,9 +1,8 @@
+use std::{path::PathBuf, str::FromStr};
+
 use crate::{
-    csv_processing::load_keys_from_directory,
     data::{FrameBatch, FrameBatcher},
-    images::{convert_images_to_image_pixel_data, load_images_from_directory},
     model::{MyModel, MyModelConfig},
-    types::MyData,
 };
 use burn::{
     backend::{cuda_jit::CudaDevice, wgpu::WgpuDevice, Autodiff, CudaJit, Wgpu},
@@ -16,9 +15,11 @@ use burn::{
         metric::LossMetric, LearnerBuilder, RegressionOutput, TrainOutput, TrainStep, ValidStep,
     },
 };
+use common::*;
 use nn::loss::HuberLossConfig;
 
 use burn::{prelude::Backend, tensor::Tensor};
+use preprocessor::{hdf5_processing::read_all_hdf5_files, images::MyImage, types::MyConstData};
 
 impl<B: Backend> MyModel<B> {
     pub fn forward_generation(
@@ -93,40 +94,29 @@ fn train<B: AutodiffBackend>(artifact_dir: &str, config: TrainingConfig, device:
 
     B::seed(config.seed);
 
-    let train_dir = "data/images/train";
-    let test_dir = "data/images/test";
+    // let train_dir = "data/images/train";
+    // let test_dir = "data/images/test";
 
-    let train_images =
-        convert_images_to_image_pixel_data(load_images_from_directory(train_dir).unwrap());
-    let test_images =
-        convert_images_to_image_pixel_data(load_images_from_directory(test_dir).unwrap());
+    // let train_images =
+    //     convert_images_to_image_pixel_data(load_images_from_directory(train_dir).unwrap());
+    // let test_images =
+    //     convert_images_to_image_pixel_data(load_images_from_directory(test_dir).unwrap());
 
-    let keys = load_keys_from_directory("data/keys").unwrap();
+    // let keys = load_keys_from_directory("data/keys").unwrap();
 
-    // TODO: Убрать путаницу с порядком
-    let test_keys = keys[..test_images.len()].to_vec();
-    let train_keys = keys[test_images.len()..].to_vec();
+    let data_path = PathBuf::from_str("data").unwrap();
+    let data_path = &data_path.join("hdf5_files");
 
-    let train_data: Vec<MyData> = train_images
-        .iter()
-        .zip(train_keys.iter())
-        .map(|(image, keys)| MyData {
-            image: image.clone(),
-            keys: keys.clone(),
-        })
-        .collect();
+    let my_data = read_all_hdf5_files(data_path).expect("Чтение всех файлов hdf5");
 
-    let test_data: Vec<MyData> = test_images
-        .iter()
-        .zip(test_keys.iter())
-        .map(|(image, keys)| MyData {
-            image: image.clone(),
-            keys: keys.clone(),
-        })
-        .collect();
+    let train_percintil = 0.3;
+    let train_len = (my_data.len() as f64 * train_percintil) as usize;
 
-    let dataset_train: InMemDataset<MyData> = InMemDataset::new(train_data);
-    let dataset_test: InMemDataset<MyData> = InMemDataset::new(test_data);
+    let train_data = my_data[..train_len].to_vec();
+    let test_data = my_data[train_len..].to_vec();
+
+    let dataset_train: InMemDataset<MyConstData> = InMemDataset::new(train_data);
+    let dataset_test: InMemDataset<MyConstData> = InMemDataset::new(test_data);
 
     let batcher_train = FrameBatcher::<B>::new(device.clone());
     let batcher_valid = FrameBatcher::<B::InnerBackend>::new(device.clone());

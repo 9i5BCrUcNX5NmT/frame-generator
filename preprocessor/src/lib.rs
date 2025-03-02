@@ -8,10 +8,10 @@ use images::{load_images_from_directory, process_images, MyImage};
 use types::MyConstData;
 use videos::process_videos;
 
-mod csv_processing;
-mod hdf5_processing;
-mod images;
-mod types;
+pub mod csv_processing;
+pub mod hdf5_processing;
+pub mod images;
+pub mod types;
 mod videos;
 
 pub fn process_my_videos() {
