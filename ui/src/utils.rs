@@ -369,7 +369,6 @@ pub struct DataStatus {
     pub video: bool,
     pub images_from_frames: bool,
     pub resized_images: bool,
-    pub test_and_train: bool,
     pub hdf5_files: bool,
 }
 
@@ -385,9 +384,6 @@ pub fn check_data(state: &mut State) {
     state.data_status.images_from_frames = check_dir_not_empty(&images_path.join("raw"));
 
     state.data_status.resized_images = check_dir_not_empty(&images_path.join("resized_images"));
-
-    state.data_status.test_and_train = check_dir_not_empty(&images_path.join("test"))
-        && check_dir_not_empty(&images_path.join("train"));
 }
 
 fn check_dir_not_empty(dir: &PathBuf) -> bool {

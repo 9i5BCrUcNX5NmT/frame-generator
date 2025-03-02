@@ -53,10 +53,6 @@ fn view(state: &State) -> Element<Message> {
                     "Преобразование кадров: {}",
                     state.data_status.resized_images
                 )),
-                text(format!(
-                    "Тренировочные и тестовые данные: {}",
-                    state.data_status.test_and_train
-                )),
                 text(format!("hdf5 файлы: {}", state.data_status.hdf5_files)),
             ]
             .spacing(10),
@@ -126,20 +122,14 @@ fn update(state: &mut State, message: Message) {
             state.image = Some(match &state.image {
                 Some(image_handle) => generate_frame(image_handle, keys, mouse),
                 None => generate_frame(
-                    &image::Handle::from_path("data/images/test/out_0001.png"),
+                    &image::Handle::from_path("data/images/resized_images/out_0001.png"),
                     keys,
                     mouse,
                 ),
             })
         }
         Message::ModelTraining => {
-            check_data(state);
-
-            if state.data_status.test_and_train {
-                thread::spawn(|| model_training::training::run());
-            } else {
-                state.message_to_user = "Модель не готова к обучению".to_string();
-            }
+            thread::spawn(|| model_training::training::run());
         }
         Message::Record => {
             thread::spawn(|| recorder::run());
@@ -151,7 +141,9 @@ fn update(state: &mut State, message: Message) {
             thread::spawn(|| preprocessor::process_my_images());
         }
         Message::ReloadImage => {
-            state.image = Some(image::Handle::from_path("data/images/test/out_0001.png"))
+            state.image = Some(image::Handle::from_path(
+                "data/images/resized_images/out_0001.png",
+            ))
         }
         Message::WriteData => preprocessor::write_my_data(),
         Message::ReadData => preprocessor::read_my_data(),

@@ -96,7 +96,7 @@ fn mouse_to_num(s: &str) -> [i32; 2] {
     [values[0], values[1]]
 }
 
-fn key_to_num(key: &str) -> u8 {
+pub fn key_to_num(key: &str) -> u8 {
     let key = key.to_lowercase();
 
     match key.as_str() {
