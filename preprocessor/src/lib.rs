@@ -1,8 +1,8 @@
 use std::{path::PathBuf, str::FromStr};
 
 use csv_processing::load_records_from_directory;
-use hdf5_processing::{read_data, write_data};
-use image::DynamicImage;
+
+use hdf5_processing::{read_all_hdf5_files, write_data_to_hdf5_files};
 use images::{load_images_from_directory, process_images, MyImage};
 use model_training::{HEIGHT, WIDTH};
 use types::MyConstData;
@@ -39,9 +39,6 @@ pub fn write_my_data() {
         panic!("Отсутствуют изображения для обработки")
     }
 
-    let data_path = &data_path.join("preprocessor");
-    std::fs::create_dir_all(data_path).unwrap();
-
     let my_data: Vec<MyConstData> = keys_records
         .iter()
         .zip(images.iter())
@@ -51,17 +48,13 @@ pub fn write_my_data() {
         })
         .collect();
 
-    dbg!(my_data.len());
-
-    let my_data = &[my_data[0].clone(), my_data[1].clone(), my_data[2].clone()];
-
-    write_data(&data_path).unwrap();
+    write_data_to_hdf5_files(&data_path, &my_data);
 }
 
 pub fn read_my_data() {
     let data_path = PathBuf::from_str("data").unwrap();
     let data_path = &data_path.join("preprocessor");
 
-    let a = read_data(data_path).unwrap();
-    println!("{:?}\n\n", a);
+    let a = read_all_hdf5_files(data_path).unwrap();
+    println!("{:?}\n\n", a.len());
 }
