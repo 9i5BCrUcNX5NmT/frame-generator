@@ -7,6 +7,7 @@ use crate::{
 use burn::{
     backend::{cuda_jit::CudaDevice, wgpu::WgpuDevice, Autodiff, CudaJit, Wgpu},
     data::{dataloader::DataLoaderBuilder, dataset::InMemDataset},
+    nn::loss::MseLoss,
     optim::AdamConfig,
     prelude::*,
     record::CompactRecorder,
@@ -30,11 +31,9 @@ impl<B: Backend> MyModel<B> {
         targets: Tensor<B, 4>,
     ) -> RegressionOutput<B> {
         let output = self.forward(inputs, keys, mouse);
-        // Какую дельту ставить? Я хз
-        let loss = HuberLossConfig::new(0.5)
-            .init()
-            // Так же неизвестно какую Reduction ставить
-            .forward(output.clone(), targets.clone(), nn::loss::Reduction::Auto);
+
+        let loss =
+            MseLoss::new().forward(output.clone(), targets.clone(), nn::loss::Reduction::Auto);
 
         let [batch_size, color, height, width] = output.dims();
         let output_2d = output.reshape([batch_size, color * height * width]);
