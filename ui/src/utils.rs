@@ -1,6 +1,10 @@
+use std::{fs, path::PathBuf, str::FromStr};
+
 use ::image::{open, DynamicImage, GenericImage, Rgba};
 use iced::{widget::image, Point};
 use model_training::{HEIGHT, WIDTH};
+
+use crate::State;
 
 pub fn key_to_string(named: iced::keyboard::key::Named) -> String {
     match named {
@@ -358,4 +362,46 @@ pub fn generate_frame(
     let image = model_training::inference::generate(&current_image, keys, mouse);
 
     image::Handle::from_rgba(WIDTH as u32, HEIGHT as u32, image.into_bytes())
+}
+
+#[derive(Default)]
+pub struct DataStatus {
+    pub video: bool,
+    pub images_from_frames: bool,
+    pub resized_images: bool,
+    pub test_and_train: bool,
+}
+
+pub fn check_data(state: &mut State) {
+    let data_path = PathBuf::from_str("data").unwrap();
+    let images_path = data_path.join("images");
+
+    state.data_status.video = check_dir_not_empty(data_path.join("videos"));
+
+    state.data_status.images_from_frames = check_dir_not_empty(images_path.join("raw"));
+
+    state.data_status.resized_images = check_dir_not_empty(images_path.join("resized_images"));
+
+    state.data_status.test_and_train = check_dir_not_empty(images_path.join("test"))
+        && check_dir_not_empty(images_path.join("train"));
+}
+
+fn check_dir_not_empty(dir: PathBuf) -> bool {
+    match fs::read_dir(dir) {
+        Ok(entries) =>
+        // Итерируемся по записям в директории
+        {
+            for entry in entries {
+                if let Ok(entry) = entry {
+                    // Проверяем, является ли запись файлом
+                    if entry.file_type().map(|ft| ft.is_file()).unwrap_or(false) {
+                        return true; // Выходим, если нашли хотя бы один файл
+                    }
+                }
+            }
+
+            false
+        }
+        Err(_) => false,
+    }
 }

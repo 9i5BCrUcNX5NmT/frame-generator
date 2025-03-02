@@ -1,10 +1,12 @@
-use std::thread;
+use std::path::PathBuf;
+use std::str::FromStr;
+use std::{fs, thread};
 
 use iced::keyboard::{on_key_press, Key, Modifiers};
 use iced::widget::{button, column, container, image, mouse_area, row, text};
-use iced::Length;
+use iced::{Alignment, Length};
 use iced::{Element, Point, Subscription, Theme};
-use utils::{generate_frame, key_to_string};
+use utils::{check_data, generate_frame, key_to_string, DataStatus};
 
 mod utils;
 
@@ -20,6 +22,7 @@ enum Message {
     FramesProcessing,
     WriteData,
     ReadData,
+    CheckData,
 }
 
 #[derive(Default)]
@@ -27,23 +30,49 @@ struct State {
     pub pressed_key: String,
     pub mouse_position: Point<f32>,
     pub image: Option<image::Handle>,
+    pub data_status: DataStatus,
+    pub message_to_user: String,
 }
 
 fn view(state: &State) -> Element<Message> {
     let content = column![
-        button(text(state.pressed_key.clone())),
-        button(text(format!("{}", state.mouse_position.clone()))),
+        row![
+            column![
+                text(format!("{}", state.mouse_position.clone())),
+                row![text("Key: "), text(state.pressed_key.clone())],
+            ]
+            .spacing(10),
+            column![
+                text("Status"),
+                text(format!("Записанное видео: {}", state.data_status.video)),
+                text(format!(
+                    "Извлечение кадров: {}",
+                    state.data_status.images_from_frames
+                )),
+                text(format!(
+                    "Преобразование кадров: {}",
+                    state.data_status.resized_images
+                )),
+                text(format!(
+                    "Тренировочные и тестовые данные: {}",
+                    state.data_status.test_and_train
+                )),
+            ]
+            .spacing(10),
+            column![text("Log"), text(state.message_to_user.clone()),].spacing(10)
+        ]
+        .spacing(10),
         match &state.image {
             Some(image_handle) => image(image_handle),
             None => image(""),
         }
-        // .content_fit(iced::ContentFit::Fill),
         .width(Length::Fill)
         .height(Length::Fill),
         column![
             row![
                 button(text("Генерация")).on_press(Message::GenerateImage),
                 button(text("Сбросить изображение")).on_press(Message::ReloadImage),
+                button(text("Перезагрузить статус")).on_press(Message::CheckData),
             ],
             row![
                 button(text("Запись")).on_press(Message::Record),
@@ -56,9 +85,11 @@ fn view(state: &State) -> Element<Message> {
                 button(text("ReadData")).on_press(Message::ReadData),
             ]
         ]
-        .spacing(20)
+        .spacing(10)
     ]
-    .spacing(20);
+    .align_x(Alignment::End)
+    .spacing(10)
+    .padding(10);
 
     mouse_area(
         container(content)
@@ -101,7 +132,13 @@ fn update(state: &mut State, message: Message) {
             })
         }
         Message::ModelTraining => {
-            thread::spawn(|| model_training::training::run());
+            check_data(state);
+
+            if state.data_status.test_and_train {
+                thread::spawn(|| model_training::training::run());
+            } else {
+                state.message_to_user = "Модель не готова к обучению".to_string();
+            }
         }
         Message::Record => {
             thread::spawn(|| recorder::run());
@@ -117,6 +154,7 @@ fn update(state: &mut State, message: Message) {
         }
         Message::WriteData => preprocessor::write_my_data(),
         Message::ReadData => preprocessor::read_my_data(),
+        Message::CheckData => check_data(state),
     };
 }
 
