@@ -17,7 +17,7 @@ fn write_hdf5_file(
     // #[cfg(feature = "blosc")]
     // let builder = builder.blosc_zstd(9, true); // zstd + shuffle
 
-    let ds = builder
+    let _ = builder
         .with_data(my_data)
         // finalize and write the dataset
         .create("data")?;
@@ -26,10 +26,9 @@ fn write_hdf5_file(
 }
 
 pub fn write_data_to_hdf5_files(data_path: &PathBuf, my_data: &Vec<MyConstData>) {
-    let data_path = &data_path.join("preprocessor");
     std::fs::create_dir_all(data_path).unwrap();
 
-    for (i, data) in my_data.chunks(100).enumerate() {
+    for (i, data) in my_data.chunks(1).enumerate() {
         let array_data = Array::from_vec(data.to_vec());
 
         let file_path = data_path.join(format!("my_data_{}.h5", i));

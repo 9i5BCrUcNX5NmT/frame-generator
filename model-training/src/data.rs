@@ -1,6 +1,7 @@
 use burn::{data::dataloader::batcher::Batcher, prelude::*};
+use common::{HEIGHT, MOUSE_VECTOR_LENGTH, WIDTH};
 
-use crate::{types::MyData, HEIGHT, MOUSE_VECTOR_LENGTH, WIDTH};
+use crate::types::MyData;
 
 #[derive(Clone)]
 pub struct FrameBatcher<B: Backend> {

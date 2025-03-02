@@ -6,6 +6,7 @@ use burn::{
     prelude::Backend,
     record::{CompactRecorder, Recorder},
 };
+use common::*;
 use image::DynamicImage;
 
 use crate::{
@@ -14,7 +15,6 @@ use crate::{
     images::{convert_image_pixel_data_to_images, MyImage},
     training::TrainingConfig,
     types::MyData,
-    HEIGHT, WIDTH,
 };
 
 fn infer<B: Backend>(artifact_dir: &str, device: B::Device, item: MyData) -> Vec<DynamicImage> {

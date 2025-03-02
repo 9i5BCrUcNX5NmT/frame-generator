@@ -5,8 +5,7 @@ use burn::nn::pool::{MaxPool2d, MaxPool2dConfig};
 use burn::nn::{Linear, LinearConfig, Relu};
 use burn::tensor::backend::Backend;
 use burn::tensor::Tensor;
-
-use crate::MOUSE_VECTOR_LENGTH;
+use common::MOUSE_VECTOR_LENGTH;
 
 // #[derive(Module, Debug)]
 // pub struct ConvFusionBlock<B: Backend> {

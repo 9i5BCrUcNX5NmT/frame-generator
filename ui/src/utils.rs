@@ -1,8 +1,8 @@
 use std::{fs, path::PathBuf, str::FromStr};
 
 use ::image::{open, DynamicImage, GenericImage, Rgba};
+use common::*;
 use iced::{widget::image, Point};
-use model_training::{HEIGHT, WIDTH};
 
 use crate::State;
 
@@ -370,10 +370,14 @@ pub struct DataStatus {
     pub images_from_frames: bool,
     pub resized_images: bool,
     pub test_and_train: bool,
+    pub hdf5_files: bool,
 }
 
 pub fn check_data(state: &mut State) {
     let data_path = PathBuf::from_str("data").unwrap();
+
+    state.data_status.hdf5_files = check_dir_not_empty(&data_path.join("hdf5_files"));
+
     let images_path = data_path.join("images");
 
     state.data_status.video = check_dir_not_empty(&data_path.join("videos"));

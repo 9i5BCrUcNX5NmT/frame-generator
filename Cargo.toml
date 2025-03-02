@@ -1,3 +1,4 @@
 [workspace]
-members = ["model-training", "preprocessor", "recorder", "ui"]
+members = [ "common","model-training", "preprocessor", "recorder", "ui"]
 resolver = "2"
+

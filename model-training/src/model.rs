@@ -7,17 +7,16 @@ use burn::{
     prelude::*,
 };
 
-use crate::{
-    blocks::{
-        // ConvFusionBlock, ConvFusionBlockConfig, DownBlock, DownBlockConfig,
-        KeyboardEmbedder,
-        KeyboardEmbedderConfig,
-        MouseEmbedder,
-        MouseEmbedderConfig,
-        // UpBlock, UpBlockConfig,
-    },
-    HEIGHT, WIDTH,
+use crate::blocks::{
+    // ConvFusionBlock, ConvFusionBlockConfig, DownBlock, DownBlockConfig,
+    KeyboardEmbedder,
+    KeyboardEmbedderConfig,
+    MouseEmbedder,
+    MouseEmbedderConfig,
+    // UpBlock, UpBlockConfig,
 };
+
+use common::*;
 
 #[derive(Module, Debug)]
 pub struct MyModel<B: Backend> {

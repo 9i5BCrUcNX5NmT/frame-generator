@@ -5,7 +5,7 @@ use std::{
 
 use image::{DynamicImage, GenericImageView, Rgba, RgbaImage};
 
-use crate::{HEIGHT, WIDTH};
+use common::*;
 
 pub struct ImageData {
     pub image_path: PathBuf,
