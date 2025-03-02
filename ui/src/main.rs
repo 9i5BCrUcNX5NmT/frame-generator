@@ -57,6 +57,7 @@ fn view(state: &State) -> Element<Message> {
                     "Тренировочные и тестовые данные: {}",
                     state.data_status.test_and_train
                 )),
+                text(format!("hdf5 файлы: {}", state.data_status.hdf5_files)),
             ]
             .spacing(10),
             column![text("Log"), text(state.message_to_user.clone()),].spacing(10)

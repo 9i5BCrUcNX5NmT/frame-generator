@@ -2,9 +2,9 @@ use std::{path::PathBuf, str::FromStr};
 
 use csv_processing::load_records_from_directory;
 
+use common::*;
 use hdf5_processing::{read_all_hdf5_files, write_data_to_hdf5_files};
 use images::{load_images_from_directory, process_images, MyImage};
-use model_training::{HEIGHT, WIDTH};
 use types::MyConstData;
 use videos::process_videos;
 
@@ -48,12 +48,12 @@ pub fn write_my_data() {
         })
         .collect();
 
-    write_data_to_hdf5_files(&data_path, &my_data);
+    write_data_to_hdf5_files(&data_path.join("hdf5_files"), &my_data);
 }
 
 pub fn read_my_data() {
     let data_path = PathBuf::from_str("data").unwrap();
-    let data_path = &data_path.join("preprocessor");
+    let data_path = &data_path.join("hdf5_files");
 
     let a = read_all_hdf5_files(data_path).unwrap();
     println!("{:?}\n\n", a.len());

@@ -11,3 +11,4 @@ image = "0.25.5"
 model-training = { path = "../model-training" }
 recorder = { path = "../recorder" }
 preprocessor = { path = "../preprocessor" }
+common = {path = "../common"}

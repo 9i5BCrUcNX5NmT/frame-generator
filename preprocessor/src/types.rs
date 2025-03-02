@@ -1,5 +1,5 @@
+use common::*;
 use hdf5_metno::H5Type;
-use model_training::{HEIGHT, WIDTH};
 
 use crate::{csv_processing::KeysRecordConst, images::MyImage};
 

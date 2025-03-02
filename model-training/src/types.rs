@@ -1,4 +1,5 @@
-use crate::{csv_processing::KeysRecord, images::MyImage, HEIGHT, WIDTH};
+use crate::{csv_processing::KeysRecord, images::MyImage};
+use common::*;
 
 #[derive(Clone, Debug)]
 pub struct MyData {
