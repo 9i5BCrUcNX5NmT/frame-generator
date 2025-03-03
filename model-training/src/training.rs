@@ -16,8 +16,6 @@ use burn::{
         metric::LossMetric, LearnerBuilder, RegressionOutput, TrainOutput, TrainStep, ValidStep,
     },
 };
-use common::*;
-use nn::loss::HuberLossConfig;
 
 use burn::{prelude::Backend, tensor::Tensor};
 use preprocessor::{hdf5_processing::read_all_hdf5_files, images::MyImage, types::MyConstData};
@@ -67,7 +65,7 @@ impl<B: Backend> ValidStep<FrameBatch<B>, RegressionOutput<B>> for MyModel<B> {
 pub(crate) struct TrainingConfig {
     pub model: MyModelConfig,
     pub optimizer: AdamConfig,
-    #[config(default = 15)]
+    #[config(default = 10)]
     pub num_epochs: usize,
     #[config(default = 8)]
     pub batch_size: usize,
