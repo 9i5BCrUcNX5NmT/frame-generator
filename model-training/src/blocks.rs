@@ -7,151 +7,151 @@ use burn::tensor::backend::Backend;
 use burn::tensor::Tensor;
 use common::MOUSE_VECTOR_LENGTH;
 
-// #[derive(Module, Debug)]
-// pub struct ConvFusionBlock<B: Backend> {
-//     conv1: Conv2d<B>,
-//     activation1: Relu,
-//     conv2: Conv2d<B>,
-//     activation2: Relu,
-// }
+#[derive(Module, Debug)]
+pub struct ConvFusionBlock<B: Backend> {
+    conv1: Conv2d<B>,
+    activation1: Relu,
+    conv2: Conv2d<B>,
+    activation2: Relu,
+}
 
-// #[derive(Config, Debug)]
-// pub struct ConvFusionBlockConfig {
-//     in_channels: usize,
-//     out_channels: usize,
-//     embed_dim: usize,
-// }
+#[derive(Config, Debug)]
+pub struct ConvFusionBlockConfig {
+    in_channels: usize,
+    out_channels: usize,
+    embed_dim: usize,
+}
 
-// impl ConvFusionBlockConfig {
-//     pub fn init<B: Backend>(&self, device: &B::Device) -> ConvFusionBlock<B> {
-//         ConvFusionBlock {
-//             conv1: Conv2dConfig::new(
-//                 [self.in_channels + self.embed_dim, self.out_channels],
-//                 [3, 3],
-//             )
-//             .init(device),
-//             activation1: Relu,
-//             conv2: Conv2dConfig::new([self.out_channels, self.out_channels], [3, 3]).init(device),
-//             activation2: Relu,
-//         }
-//     }
-// }
+impl ConvFusionBlockConfig {
+    pub fn init<B: Backend>(&self, device: &B::Device) -> ConvFusionBlock<B> {
+        ConvFusionBlock {
+            conv1: Conv2dConfig::new(
+                [self.in_channels + self.embed_dim, self.out_channels],
+                [3, 3],
+            )
+            .init(device),
+            activation1: Relu,
+            conv2: Conv2dConfig::new([self.out_channels, self.out_channels], [3, 3]).init(device),
+            activation2: Relu,
+        }
+    }
+}
 
-// impl<B: Backend> ConvFusionBlock<B> {
-//     /// Normal method added to a struct.
-//     pub fn forward(&self, input: Tensor<B, 4>, embed: Tensor<B, 2>) -> Tensor<B, 4> {
-//         let [batch_size, _channels, height, width] = input.dims();
-//         let [_, embedding_dim] = embed.dims();
+impl<B: Backend> ConvFusionBlock<B> {
+    /// Normal method added to a struct.
+    pub fn forward(&self, input: Tensor<B, 4>, embed: Tensor<B, 2>) -> Tensor<B, 4> {
+        let [batch_size, _channels, height, width] = input.dims();
+        let [_, embedding_dim] = embed.dims();
 
-//         let embed_map = embed.unsqueeze_dims::<4>(&[2, 3]); // [embed_dim, 1, 1]
-//         let embed_map = embed_map.expand([batch_size, embedding_dim, height, width]); // [embed_dim, height, width]
+        let embed_map = embed.unsqueeze_dims::<4>(&[2, 3]); // [embed_dim, 1, 1]
+        let embed_map = embed_map.expand([batch_size, embedding_dim, height, width]); // [embed_dim, height, width]
 
-//         let x = Tensor::cat(vec![input, embed_map.clone()], 1); // [embed_dim + channels, height, width]
+        let x = Tensor::cat(vec![input, embed_map.clone()], 1); // [embed_dim + channels, height, width]
 
-//         let x = self.conv1.forward(x); // [channels, height / 3, width / 3]
-//         let x = self.activation1.forward(x);
-//         let x = self.conv2.forward(x); // [channels, height / 9, width / 9]
-//         let x = self.activation2.forward(x);
+        let x = self.conv1.forward(x); // [channels, height / 3, width / 3]
+        let x = self.activation1.forward(x);
+        let x = self.conv2.forward(x); // [channels, height / 9, width / 9]
+        let x = self.activation2.forward(x);
 
-//         x
-//     }
-// }
+        x
+    }
+}
 
-// #[derive(Module, Debug)]
-// pub struct DownBlock<B: Backend> {
-//     pool: MaxPool2d,
-//     conv: ConvFusionBlock<B>,
-// }
+#[derive(Module, Debug)]
+pub struct DownBlock<B: Backend> {
+    pool: MaxPool2d,
+    conv: ConvFusionBlock<B>,
+}
 
-// #[derive(Config, Debug)]
-// pub struct DownBlockConfig {
-//     in_channels: usize,
-//     out_channels: usize,
-//     embed_dim: usize,
-// }
+#[derive(Config, Debug)]
+pub struct DownBlockConfig {
+    in_channels: usize,
+    out_channels: usize,
+    embed_dim: usize,
+}
 
-// impl DownBlockConfig {
-//     pub fn init<B: Backend>(&self, device: &B::Device) -> DownBlock<B> {
-//         DownBlock {
-//             pool: MaxPool2dConfig::new([2, 2]).init(),
-//             conv: ConvFusionBlockConfig::new(self.in_channels, self.out_channels, self.embed_dim)
-//                 .init(device),
-//         }
-//     }
-// }
+impl DownBlockConfig {
+    pub fn init<B: Backend>(&self, device: &B::Device) -> DownBlock<B> {
+        DownBlock {
+            pool: MaxPool2dConfig::new([2, 2]).init(),
+            conv: ConvFusionBlockConfig::new(self.in_channels, self.out_channels, self.embed_dim)
+                .init(device),
+        }
+    }
+}
 
-// impl<B: Backend> DownBlock<B> {
-//     /// Normal method added to a struct.
-//     pub fn forward(&self, input: Tensor<B, 4>, embed: Tensor<B, 2>) -> Tensor<B, 4> {
-//         let x = self.pool.forward(input.clone());
-//         let x = self.conv.forward(x, embed);
+impl<B: Backend> DownBlock<B> {
+    /// Normal method added to a struct.
+    pub fn forward(&self, input: Tensor<B, 4>, embed: Tensor<B, 2>) -> Tensor<B, 4> {
+        let x = self.pool.forward(input.clone());
+        let x = self.conv.forward(x, embed);
 
-//         x
-//     }
-// }
+        x
+    }
+}
 
-// #[derive(Module, Debug)]
-// pub struct UpBlock<B: Backend> {
-//     up: ConvTranspose2d<B>,
-//     conv: ConvFusionBlock<B>,
-// }
+#[derive(Module, Debug)]
+pub struct UpBlock<B: Backend> {
+    up: ConvTranspose2d<B>,
+    conv: ConvFusionBlock<B>,
+}
 
-// #[derive(Config, Debug)]
-// pub struct UpBlockConfig {
-//     in_channels: usize,
-//     out_channels: usize,
-//     embed_dim: usize,
-// }
+#[derive(Config, Debug)]
+pub struct UpBlockConfig {
+    in_channels: usize,
+    out_channels: usize,
+    embed_dim: usize,
+}
 
-// impl UpBlockConfig {
-//     pub fn init<B: Backend>(&self, device: &B::Device) -> UpBlock<B> {
-//         UpBlock {
-//             up: ConvTranspose2dConfig::new([self.in_channels, self.out_channels], [2, 2])
-//                 .init(device),
-//             conv: ConvFusionBlockConfig::new(
-//                 self.out_channels * 2,
-//                 self.out_channels,
-//                 self.embed_dim,
-//             )
-//             .init(device),
-//         }
-//     }
-// }
+impl UpBlockConfig {
+    pub fn init<B: Backend>(&self, device: &B::Device) -> UpBlock<B> {
+        UpBlock {
+            up: ConvTranspose2dConfig::new([self.in_channels, self.out_channels], [2, 2])
+                .init(device),
+            conv: ConvFusionBlockConfig::new(
+                self.out_channels * 2,
+                self.out_channels,
+                self.embed_dim,
+            )
+            .init(device),
+        }
+    }
+}
 
-// impl<B: Backend> UpBlock<B> {
-//     /// Normal method added to a struct.
-//     pub fn forward(
-//         &self,
-//         input: Tensor<B, 4>,
-//         skip: Tensor<B, 4>,
-//         embed: Tensor<B, 2>,
-//     ) -> Tensor<B, 4> {
-//         let mut x = self.up.forward(input.clone());
+impl<B: Backend> UpBlock<B> {
+    /// Normal method added to a struct.
+    pub fn forward(
+        &self,
+        input: Tensor<B, 4>,
+        skip: Tensor<B, 4>,
+        embed: Tensor<B, 2>,
+    ) -> Tensor<B, 4> {
+        let mut x = self.up.forward(input.clone());
 
-//         let [_i1, _i2, i3, i4] = input.dims();
-//         let [_s1, _s2, s3, s4] = skip.dims();
+        let [_i1, _i2, i3, i4] = input.dims();
+        let [_s1, _s2, s3, s4] = skip.dims();
 
-//         if i3 != s3 || i4 != s4 {
-//             let diff_y = s3 - i3;
-//             let diff_x = s4 - i4;
+        if i3 != s3 || i4 != s4 {
+            let diff_y = s3 - i3;
+            let diff_x = s4 - i4;
 
-//             x = x.pad(
-//                 (
-//                     diff_x / 2,
-//                     diff_x - diff_x / 2 - 1,
-//                     diff_y / 2,
-//                     diff_y - diff_y / 2 - 1,
-//                 ),
-//                 0.0, // TODO: Другие виды заполнения?
-//             )
-//         }
+            x = x.pad(
+                (
+                    diff_x / 2,
+                    diff_x - diff_x / 2 - 1,
+                    diff_y / 2,
+                    diff_y - diff_y / 2 - 1,
+                ),
+                0.0, // TODO: Другие виды заполнения?
+            )
+        }
 
-//         let x = Tensor::cat(vec![skip, x], 1);
-//         let x = self.conv.forward(x, embed);
+        let x = Tensor::cat(vec![skip, x], 1);
+        let x = self.conv.forward(x, embed);
 
-//         x
-//     }
-// }
+        x
+    }
+}
 
 #[derive(Module, Debug)]
 pub struct MouseEmbedder<B: Backend> {

@@ -1,11 +1,11 @@
-use std::{path::PathBuf, str::FromStr};
+use std::{path::PathBuf, str::FromStr, thread::sleep, time::Duration};
 
 use crate::{
     data::{FrameBatch, FrameBatcher},
     model::{MyModel, MyModelConfig},
 };
 use burn::{
-    backend::{cuda_jit::CudaDevice, wgpu::WgpuDevice, Autodiff, CudaJit, Wgpu},
+    backend::{ndarray::NdArrayDevice, Autodiff, NdArray},
     data::{dataloader::DataLoaderBuilder, dataset::InMemDataset},
     nn::loss::MseLoss,
     optim::AdamConfig,
@@ -153,10 +153,15 @@ fn train<B: AutodiffBackend>(artifact_dir: &str, config: TrainingConfig, device:
 pub fn run() {
     let artifact_dir = "tmp/test";
 
-    type MyBackend = Wgpu<f32, i32>;
+    type MyBackend = NdArray<f32>;
     type MyAutodiffBackend = Autodiff<MyBackend>;
 
-    let device = WgpuDevice::default();
+    let device = NdArrayDevice::default();
+
+    // type MyBackend = Wgpu<f32, i32>;
+    // type MyAutodiffBackend = Autodiff<MyBackend>;
+
+    // let device = WgpuDevice::default();
 
     // type MyBackend = CudaJit<f32, i32>;
     // type MyAutodiffBackend = Autodiff<MyBackend>;
