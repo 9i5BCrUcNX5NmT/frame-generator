@@ -1,5 +1,5 @@
 use burn::{
-    backend::{ndarray::NdArrayDevice, NdArray},
+    backend::{CudaJit, cuda_jit::CudaDevice},
     config::Config,
     data::dataloader::batcher::Batcher,
     module::Module,
@@ -9,7 +9,7 @@ use burn::{
 use common::*;
 use image::DynamicImage;
 use preprocessor::{
-    csv_processing::{key_to_num, KeysRecordConst},
+    csv_processing::{KeysRecordConst, key_to_num},
     images::MyImage,
     types::MyConstData,
 };
@@ -77,15 +77,14 @@ pub fn generate(
     let artifact_dir = "tmp/test";
     // let image_path = "tmp/test/output";
 
-    type MyBackend = NdArray<f32>;
-
-    let device = NdArrayDevice::default();
+    // type MyBackend = NdArray<f32>;
+    // let device = NdArrayDevice::default();
 
     // type MyBackend = Wgpu<f32, i32>;
     // let device = WgpuDevice::default();
 
-    // type MyBackend = CudaJit<f32, i32>;
-    // let device = CudaDevice::default();
+    type MyBackend = CudaJit<f32, i32>;
+    let device = CudaDevice::default();
 
     // TODO: хз
     // let image_path = Path::new(image_path).to_path_buf();

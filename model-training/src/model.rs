@@ -1,8 +1,8 @@
 use burn::{
     nn::{
+        Linear, LinearConfig, Relu,
         conv::{Conv2d, Conv2dConfig, ConvTranspose2d, ConvTranspose2dConfig},
         pool::{AdaptiveAvgPool2d, AdaptiveAvgPool2dConfig},
-        Linear, LinearConfig, Relu,
     },
     prelude::*,
 };
@@ -51,7 +51,7 @@ pub struct MyModel<B: Backend> {
 pub struct MyModelConfig {
     #[config(default = "4")]
     in_channels: usize,
-    #[config(default = "10")]
+    #[config(default = "4")]
     base_channels: usize,
     #[config(default = "4")]
     out_channels: usize,
@@ -146,9 +146,9 @@ impl<B: Backend> MyModel<B> {
 
         // Обратный ход (skip connections)
         let d1 = self.up1.forward(x5, x4, embed.clone());
-        let d2 = self.up1.forward(d1, x3, embed.clone());
-        let d3 = self.up1.forward(d2, x2, embed.clone());
-        let d4 = self.up1.forward(d3, x1, embed);
+        let d2 = self.up2.forward(d1, x3, embed.clone());
+        let d3 = self.up3.forward(d2, x2, embed.clone());
+        let d4 = self.up4.forward(d3, x1, embed);
 
         // let out = self.out_conv.forward(d4);
         let out = self.adaptive_pool.forward(d4);

@@ -3,8 +3,8 @@ use burn::module::Module;
 use burn::nn::conv::{Conv2d, Conv2dConfig, ConvTranspose2d, ConvTranspose2dConfig};
 use burn::nn::pool::{MaxPool2d, MaxPool2dConfig};
 use burn::nn::{Linear, LinearConfig, Relu};
-use burn::tensor::backend::Backend;
 use burn::tensor::Tensor;
+use burn::tensor::backend::Backend;
 use common::MOUSE_VECTOR_LENGTH;
 
 #[derive(Module, Debug)]

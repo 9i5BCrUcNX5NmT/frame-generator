@@ -5,7 +5,7 @@ use crate::{
     model::{MyModel, MyModelConfig},
 };
 use burn::{
-    backend::{ndarray::NdArrayDevice, Autodiff, NdArray},
+    backend::{Autodiff, CudaJit, cuda_jit::CudaDevice},
     data::{dataloader::DataLoaderBuilder, dataset::InMemDataset},
     nn::loss::MseLoss,
     optim::AdamConfig,
@@ -13,7 +13,7 @@ use burn::{
     record::CompactRecorder,
     tensor::backend::AutodiffBackend,
     train::{
-        metric::LossMetric, LearnerBuilder, RegressionOutput, TrainOutput, TrainStep, ValidStep,
+        LearnerBuilder, RegressionOutput, TrainOutput, TrainStep, ValidStep, metric::LossMetric,
     },
 };
 
@@ -67,9 +67,9 @@ pub(crate) struct TrainingConfig {
     pub optimizer: AdamConfig,
     #[config(default = 10)]
     pub num_epochs: usize,
-    #[config(default = 8)]
+    #[config(default = 64)]
     pub batch_size: usize,
-    #[config(default = 4)]
+    #[config(default = 16)]
     pub num_workers: usize,
     #[config(default = 42)]
     pub seed: u64,
@@ -153,20 +153,19 @@ fn train<B: AutodiffBackend>(artifact_dir: &str, config: TrainingConfig, device:
 pub fn run() {
     let artifact_dir = "tmp/test";
 
-    type MyBackend = NdArray<f32>;
-    type MyAutodiffBackend = Autodiff<MyBackend>;
+    // type MyBackend = NdArray<f32>;
 
-    let device = NdArrayDevice::default();
+    // let device = NdArrayDevice::default();
 
     // type MyBackend = Wgpu<f32, i32>;
-    // type MyAutodiffBackend = Autodiff<MyBackend>;
 
     // let device = WgpuDevice::default();
 
-    // type MyBackend = CudaJit<f32, i32>;
-    // type MyAutodiffBackend = Autodiff<MyBackend>;
+    type MyBackend = CudaJit<f32, i32>;
 
-    // let device = CudaDevice::default();
+    let device = CudaDevice::default();
+
+    type MyAutodiffBackend = Autodiff<MyBackend>;
 
     crate::training::train::<MyAutodiffBackend>(
         artifact_dir,
