@@ -21,7 +21,6 @@ enum Message {
     VideoProcessing,
     FramesProcessing,
     WriteData,
-    ReadData,
     CheckData,
 }
 
@@ -79,7 +78,6 @@ fn view(state: &State) -> Element<Message> {
             row![
                 button(text("Тренировка")).on_press(Message::ModelTraining),
                 button(text("WriteData")).on_press(Message::WriteData),
-                button(text("ReadData")).on_press(Message::ReadData),
             ]
         ]
         .spacing(10)
@@ -146,7 +144,6 @@ fn update(state: &mut State, message: Message) {
             ))
         }
         Message::WriteData => preprocessor::write_my_data(),
-        Message::ReadData => preprocessor::read_my_data(),
         Message::CheckData => check_data(state),
     };
 }

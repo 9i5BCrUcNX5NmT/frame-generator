@@ -28,7 +28,7 @@ fn write_hdf5_file(
 pub fn write_data_to_hdf5_files(data_path: &PathBuf, my_data: &Vec<MyConstData>) {
     std::fs::create_dir_all(data_path).unwrap();
 
-    for (i, data) in my_data.chunks(1).enumerate() {
+    for (i, data) in my_data.chunks(1000).enumerate() {
         let array_data = Array::from_vec(data.to_vec());
 
         let file_path = data_path.join(format!("my_data_{}.h5", i));
