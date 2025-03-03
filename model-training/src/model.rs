@@ -102,13 +102,13 @@ impl MyModelConfig {
             // up4: UpBlockConfig::new(self.base_channels * 2, self.base_channels, self.embed_dim)
             //     .init(device),
             down1: Conv2dConfig::new(
-                [self.in_channels + self.embed_dim, self.out_channels],
+                [self.in_channels + self.embed_dim, self.base_channels],
                 [3, 3],
             )
             .init(device),
             activation1: Relu,
 
-            up1: ConvTranspose2dConfig::new([self.out_channels, self.out_channels], [3, 3])
+            up1: ConvTranspose2dConfig::new([self.base_channels, self.out_channels], [3, 3])
                 .init(device),
             activation2: Relu,
 
@@ -155,7 +155,7 @@ impl<B: Backend> MyModel<B> {
         let embed_map = embed.unsqueeze_dims::<4>(&[2, 3]); // [embed_dim, 1, 1]
         let embed_map = embed_map.expand([batch_size, embedding_dim, height, width]); // [embed_dim, height, width]
 
-        let x = Tensor::cat(vec![images, embed_map.clone()], 1); // [embed_dim + channels, height, width]
+        let x = Tensor::cat(vec![images.clone(), embed_map.clone()], 1); // [embed_dim + channels, height, width]
 
         let x = self.down1.forward(x);
         let x = self.activation1.forward(x);
