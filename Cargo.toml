@@ -2,3 +2,5 @@
 members = [ "common","model-training", "preprocessor", "recorder", "ui"]
 resolver = "2"
 
+[workspace.dependencies]
+burn = { version = "0.16.0" }

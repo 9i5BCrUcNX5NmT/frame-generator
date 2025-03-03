@@ -2,11 +2,11 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use std::{fs, thread};
 
-use iced::keyboard::{on_key_press, Key, Modifiers};
+use iced::keyboard::{Key, Modifiers, on_key_press};
 use iced::widget::{button, column, container, image, mouse_area, row, text};
 use iced::{Alignment, Length};
 use iced::{Element, Point, Subscription, Theme};
-use utils::{check_data, generate_frame, key_to_string, DataStatus};
+use utils::{DataStatus, check_data, generate_frame, key_to_string};
 
 mod utils;
 
@@ -53,6 +53,7 @@ fn view(state: &State) -> Element<Message> {
                     state.data_status.resized_images
                 )),
                 text(format!("hdf5 файлы: {}", state.data_status.hdf5_files)),
+                text(format!("Keys: {}", state.data_status.keys)),
             ]
             .spacing(10),
             column![text("Log"), text(state.message_to_user.clone()),].spacing(10)

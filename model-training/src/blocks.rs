@@ -3,8 +3,8 @@ use burn::module::Module;
 use burn::nn::conv::{Conv2d, Conv2dConfig, ConvTranspose2d, ConvTranspose2dConfig};
 use burn::nn::pool::{MaxPool2d, MaxPool2dConfig};
 use burn::nn::{Linear, LinearConfig, Relu};
-use burn::tensor::backend::Backend;
 use burn::tensor::Tensor;
+use burn::tensor::backend::Backend;
 use common::MOUSE_VECTOR_LENGTH;
 
 // #[derive(Module, Debug)]
@@ -163,14 +163,15 @@ pub struct MouseEmbedder<B: Backend> {
 #[derive(Config, Debug)]
 pub struct MouseEmbedderConfig {
     embed_dim: usize,
+    hidden_dim: usize,
 }
 
 impl MouseEmbedderConfig {
     pub fn init<B: Backend>(&self, device: &B::Device) -> MouseEmbedder<B> {
         MouseEmbedder {
-            linear1: LinearConfig::new(2 * MOUSE_VECTOR_LENGTH, 256).init(device),
+            linear1: LinearConfig::new(2 * MOUSE_VECTOR_LENGTH, self.hidden_dim).init(device),
             activation: Relu,
-            linear2: LinearConfig::new(256, self.embed_dim).init(device),
+            linear2: LinearConfig::new(self.hidden_dim, self.embed_dim).init(device),
         }
     }
 }
@@ -197,14 +198,15 @@ pub struct KeyboardEmbedder<B: Backend> {
 #[derive(Config, Debug)]
 pub struct KeyboardEmbedderConfig {
     embed_dim: usize,
+    hidden_dim: usize,
 }
 
 impl KeyboardEmbedderConfig {
     pub fn init<B: Backend>(&self, device: &B::Device) -> KeyboardEmbedder<B> {
         KeyboardEmbedder {
-            linear1: LinearConfig::new(108, 256).init(device),
+            linear1: LinearConfig::new(108, self.hidden_dim).init(device),
             activation: Relu,
-            linear2: LinearConfig::new(256, self.embed_dim).init(device),
+            linear2: LinearConfig::new(self.hidden_dim, self.embed_dim).init(device),
         }
     }
 }

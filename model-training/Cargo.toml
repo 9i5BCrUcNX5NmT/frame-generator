@@ -1,10 +1,10 @@
 [package]
 name = "model-training"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
-burn = { version = "0.16.0", features = ["train", "cuda-jit", "wgpu"] }
+burn = { workspace = true, features = ["train", "ndarray",  "wgpu"] }
 csv = "1.3.1"
 image = "0.25.5"
 serde = { version = "1.0.216", features = ["derive"] }

@@ -1,11 +1,11 @@
-use std::{path::PathBuf, str::FromStr};
+use std::{path::PathBuf, str::FromStr, thread::sleep, time::Duration};
 
 use crate::{
     data::{FrameBatch, FrameBatcher},
     model::{MyModel, MyModelConfig},
 };
 use burn::{
-    backend::{cuda_jit::CudaDevice, wgpu::WgpuDevice, Autodiff, CudaJit, Wgpu},
+    backend::{self, Autodiff},
     data::{dataloader::DataLoaderBuilder, dataset::InMemDataset},
     nn::loss::MseLoss,
     optim::AdamConfig,
@@ -13,7 +13,7 @@ use burn::{
     record::CompactRecorder,
     tensor::backend::AutodiffBackend,
     train::{
-        metric::LossMetric, LearnerBuilder, RegressionOutput, TrainOutput, TrainStep, ValidStep,
+        LearnerBuilder, RegressionOutput, TrainOutput, TrainStep, ValidStep, metric::LossMetric,
     },
 };
 
@@ -65,7 +65,7 @@ impl<B: Backend> ValidStep<FrameBatch<B>, RegressionOutput<B>> for MyModel<B> {
 pub(crate) struct TrainingConfig {
     pub model: MyModelConfig,
     pub optimizer: AdamConfig,
-    #[config(default = 10)]
+    #[config(default = 15)]
     pub num_epochs: usize,
     #[config(default = 8)]
     pub batch_size: usize,
@@ -106,7 +106,7 @@ fn train<B: AutodiffBackend>(artifact_dir: &str, config: TrainingConfig, device:
 
     let my_data = read_all_hdf5_files(data_path).expect("Чтение всех файлов hdf5");
 
-    let train_percintil = 0.3;
+    let train_percintil = 0.8;
     let train_len = (my_data.len() as f64 * train_percintil) as usize;
 
     let train_data = my_data[..train_len].to_vec();
@@ -153,15 +153,14 @@ fn train<B: AutodiffBackend>(artifact_dir: &str, config: TrainingConfig, device:
 pub fn run() {
     let artifact_dir = "tmp/test";
 
-    type MyBackend = Wgpu<f32, i32>;
+    // type MyBackend = backend::NdArray<f32>;
+    // let device = backend::ndarray::NdArrayDevice::default();
+    type MyBackend = backend::Wgpu<f32, i32>;
+    let device = backend::wgpu::WgpuDevice::default();
+    // type MyBackend = backend::CudaJit<f32, i32>;
+    // let device = backend::cuda_jit::CudaDevice::default();
+
     type MyAutodiffBackend = Autodiff<MyBackend>;
-
-    let device = WgpuDevice::default();
-
-    // type MyBackend = CudaJit<f32, i32>;
-    // type MyAutodiffBackend = Autodiff<MyBackend>;
-
-    // let device = CudaDevice::default();
 
     crate::training::train::<MyAutodiffBackend>(
         artifact_dir,

@@ -11,8 +11,8 @@ fn write_hdf5_file(
 ) -> Result<()> {
     let file = File::create(file_path)?; // open for writing
     let group = file.create_group("dir")?; // create a group
-                                           // #[cfg(feature = "blosc")]
-                                           // blosc_set_nthreads(2); // set number of blosc threads
+    // #[cfg(feature = "blosc")]
+    // blosc_set_nthreads(2); // set number of blosc threads
     let builder = group.new_dataset_builder();
     // #[cfg(feature = "blosc")]
     // let builder = builder.blosc_zstd(9, true); // zstd + shuffle
@@ -28,7 +28,7 @@ fn write_hdf5_file(
 pub fn write_data_to_hdf5_files(data_path: &PathBuf, my_data: &Vec<MyConstData>) {
     std::fs::create_dir_all(data_path).unwrap();
 
-    for (i, data) in my_data.chunks(1000).enumerate() {
+    for (i, data) in my_data.chunks(100).enumerate() {
         let array_data = Array::from_vec(data.to_vec());
 
         let file_path = data_path.join(format!("my_data_{}.h5", i));
