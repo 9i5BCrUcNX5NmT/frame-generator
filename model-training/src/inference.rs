@@ -1,5 +1,5 @@
 use burn::{
-    backend::{CudaJit, cuda_jit::CudaDevice},
+    backend,
     config::Config,
     data::dataloader::batcher::Batcher,
     module::Module,
@@ -77,14 +77,12 @@ pub fn generate(
     let artifact_dir = "tmp/test";
     // let image_path = "tmp/test/output";
 
-    // type MyBackend = NdArray<f32>;
-    // let device = NdArrayDevice::default();
-
-    // type MyBackend = Wgpu<f32, i32>;
-    // let device = WgpuDevice::default();
-
-    type MyBackend = CudaJit<f32, i32>;
-    let device = CudaDevice::default();
+    // type MyBackend = backend::NdArray<f32>;
+    // let device = backend::ndarray::NdArrayDevice::default();
+    type MyBackend = backend::Wgpu<f32, i32>;
+    let device = backend::wgpu::WgpuDevice::default();
+    // type MyBackend = backend::CudaJit<f32, i32>;
+    // let device = backend::cuda_jit::CudaDevice::default();
 
     // TODO: хз
     // let image_path = Path::new(image_path).to_path_buf();
