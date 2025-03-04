@@ -77,17 +77,17 @@ pub fn generate(
     let artifact_dir = "tmp/test";
     // let image_path = "tmp/test/output";
 
-    // type MyBackend = backend::NdArray<f32>;
-    // let device = backend::ndarray::NdArrayDevice::default();
-    type MyBackend = backend::Wgpu<f32, i32>;
-    let device = backend::wgpu::WgpuDevice::default();
+    type MyBackend = backend::NdArray<f32>;
+    let device = backend::ndarray::NdArrayDevice::default();
+    // type MyBackend = backend::Wgpu<f32, i32>;
+    // let device = backend::wgpu::WgpuDevice::default();
     // type MyBackend = backend::CudaJit<f32, i32>;
     // let device = backend::cuda_jit::CudaDevice::default();
 
     // TODO: хз
     // let image_path = Path::new(image_path).to_path_buf();
     // let image_data = load_images_from_directory(image_path).unwrap();
-    let image_pixel_data = MyImage::from_image(current_image);
+    let my_image = MyImage::from_image(current_image);
 
     // TODO: мб пофиксить?
     // Да не, пока норм вроде
@@ -112,7 +112,7 @@ pub fn generate(
     }
 
     let item = MyConstData {
-        image: image_pixel_data,
+        image: my_image,
         keys_record: KeysRecordConst {
             keys: const_keys,
             mouse: const_mouse,
