@@ -19,6 +19,8 @@ pub fn process_videos(video_dir: &str, result_images_dir: &str) {
         // Преобразуем вывод в строку
         let stdout = String::from_utf8_lossy(&output.stdout);
         println!("Вывод: {}", stdout);
+
+        println!("Извлечение успешно");
     } else {
         // Если команда завершилась с ошибкой, выводим сообщение об ошибке
         let stderr = String::from_utf8_lossy(&output.stderr);

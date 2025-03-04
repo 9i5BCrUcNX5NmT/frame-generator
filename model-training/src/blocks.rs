@@ -221,3 +221,10 @@ impl<B: Backend> KeyboardEmbedder<B> {
         x
     }
 }
+
+#[derive(Module, Debug)]
+struct M {}
+
+impl<B: Backend> M<B> {
+    fn a() {}
+}
