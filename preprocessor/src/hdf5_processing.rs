@@ -25,6 +25,8 @@ fn write_hdf5_file(
     Ok(())
 }
 
+// TODO: Добавить шкалу прогресс
+
 pub fn write_data_to_hdf5_files(data_path: &PathBuf, my_data: &Vec<MyConstData>) {
     std::fs::create_dir_all(data_path).unwrap();
 
