@@ -7,12 +7,14 @@ use burn::{
     prelude::*,
 };
 
-use crate::blocks::*;
-
 use common::*;
 
+use crate::models::embedders::*;
+
+use super::blocks::*;
+
 #[derive(Module, Debug)]
-pub struct MyModel<B: Backend> {
+pub struct UNet<B: Backend> {
     mouse_embedder: MouseEmbedder<B>,
     keys_embedder: KeyboardEmbedder<B>,
 
@@ -29,33 +31,25 @@ pub struct MyModel<B: Backend> {
     up4: UpBlock<B>,
 
     out_conv: Conv2d<B>,
-
-    // down1: Conv2d<B>,
-    // activation1: Relu,
-
-    // up1: ConvTranspose2d<B>,
-    // activation2: Relu,
-    // conv: Conv2d<B>,
-    // activation: Relu,
     adaptive_pool: AdaptiveAvgPool2d,
 }
 
 #[derive(Config, Debug)]
-pub struct MyModelConfig {
+pub struct UNetConfig {
     #[config(default = "4")]
     in_channels: usize,
-    #[config(default = "10")]
+    #[config(default = "8")]
     base_channels: usize,
     #[config(default = "4")]
     out_channels: usize,
-    #[config(default = "20")]
+    #[config(default = "128")]
     embed_dim: usize,
 }
 
-impl MyModelConfig {
+impl UNetConfig {
     /// Returns the initialized model.
-    pub fn init<B: Backend>(&self, device: &B::Device) -> MyModel<B> {
-        MyModel {
+    pub fn init<B: Backend>(&self, device: &B::Device) -> UNet<B> {
+        UNet {
             mouse_embedder: MouseEmbedderConfig::new(self.embed_dim, 16).init(device),
             keys_embedder: KeyboardEmbedderConfig::new(self.embed_dim, 16).init(device),
             inc: ConvFusionBlockConfig::new(self.in_channels, self.base_channels, self.embed_dim)
@@ -104,28 +98,13 @@ impl MyModelConfig {
 
             out_conv: Conv2dConfig::new([self.base_channels, self.out_channels], [1, 1])
                 .init(device),
-            // down1: Conv2dConfig::new(
-            //     [self.in_channels + self.embed_dim, self.base_channels * 3],
-            //     [3, 3],
-            // )
-            // .init(device),
-            // activation1: Relu,
 
-            // up1: ConvTranspose2dConfig::new([self.base_channels * 3, self.out_channels], [3, 3])
-            //     .init(device),
-            // activation2: Relu,
-            // conv: Conv2dConfig::new(
-            //     [self.in_channels + self.embed_dim, self.out_channels],
-            //     [1, 1],
-            // )
-            // .init(device),
-            // activation: Relu,
             adaptive_pool: AdaptiveAvgPool2dConfig::new([HEIGHT, WIDTH]).init(),
         }
     }
 }
 
-impl<B: Backend> MyModel<B> {
+impl<B: Backend> UNet<B> {
     pub fn forward(
         &self,
         images: Tensor<B, 4>,
@@ -156,29 +135,5 @@ impl<B: Backend> MyModel<B> {
         let out = self.adaptive_pool.forward(out);
 
         out
-
-        // let [batch_size, channels, height, width] = images.dims();
-        // let [_, embedding_dim] = embed.dims();
-
-        // let embed_map = embed.unsqueeze_dims::<4>(&[2, 3]); // [embed_dim, 1, 1]
-        // let embed_map = embed_map.expand([batch_size, embedding_dim, height, width]); // [embed_dim, height, width]
-
-        // let x = Tensor::cat(vec![images.clone(), embed_map.clone()], 1); // [embed_dim + channels, height, width]
-
-        // let x = self.down1.forward(x);
-        // // let x = self.activation1.forward(x);
-        // // let x = self.down2.forward(x);
-        // // let x = self.activation2.forward(x);
-
-        // let x = self.up1.forward(x);
-        // // let x = self.activation2.forward(x);
-        // // let x = self.up2.forward(x);
-        // // let x = self.activation4.forward(x);
-
-        // // let x = self.conv.forward(x);
-
-        // let x = self.adaptive_pool.forward(x);
-
-        // x
     }
 }
