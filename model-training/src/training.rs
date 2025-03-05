@@ -1,8 +1,8 @@
-use std::{path::PathBuf, str::FromStr, thread::sleep, time::Duration};
+use std::{path::PathBuf, str::FromStr};
 
 use crate::{
     data::{FrameBatch, FrameBatcher},
-    model::{MyModel, MyModelConfig},
+    models::unet::model::{UNet, UNetConfig},
 };
 use burn::{
     backend::{self, Autodiff},
@@ -18,9 +18,9 @@ use burn::{
 };
 
 use burn::{prelude::Backend, tensor::Tensor};
-use preprocessor::{hdf5_processing::read_all_hdf5_files, images::MyImage, types::MyConstData};
+use preprocessor::{hdf5_processing::read_all_hdf5_files, types::MyConstData};
 
-impl<B: Backend> MyModel<B> {
+impl<B: Backend> UNet<B> {
     pub fn forward_generation(
         &self,
         inputs: Tensor<B, 4>,
@@ -47,7 +47,7 @@ impl<B: Backend> MyModel<B> {
     }
 }
 
-impl<B: AutodiffBackend> TrainStep<FrameBatch<B>, RegressionOutput<B>> for MyModel<B> {
+impl<B: AutodiffBackend> TrainStep<FrameBatch<B>, RegressionOutput<B>> for UNet<B> {
     fn step(&self, batch: FrameBatch<B>) -> TrainOutput<RegressionOutput<B>> {
         let item = self.forward_generation(batch.images, batch.keys, batch.mouse, batch.targets);
 
@@ -55,7 +55,7 @@ impl<B: AutodiffBackend> TrainStep<FrameBatch<B>, RegressionOutput<B>> for MyMod
     }
 }
 
-impl<B: Backend> ValidStep<FrameBatch<B>, RegressionOutput<B>> for MyModel<B> {
+impl<B: Backend> ValidStep<FrameBatch<B>, RegressionOutput<B>> for UNet<B> {
     fn step(&self, batch: FrameBatch<B>) -> RegressionOutput<B> {
         self.forward_generation(batch.images, batch.keys, batch.mouse, batch.targets)
     }
@@ -63,7 +63,7 @@ impl<B: Backend> ValidStep<FrameBatch<B>, RegressionOutput<B>> for MyModel<B> {
 
 #[derive(Config)]
 pub(crate) struct TrainingConfig {
-    pub model: MyModelConfig,
+    pub model: UNetConfig,
     pub optimizer: AdamConfig,
     #[config(default = 10)]
     pub num_epochs: usize,
@@ -164,7 +164,7 @@ pub fn run() {
 
     crate::training::train::<MyAutodiffBackend>(
         artifact_dir,
-        TrainingConfig::new(MyModelConfig::new(), AdamConfig::new()),
+        TrainingConfig::new(UNetConfig::new(), AdamConfig::new()),
         device.clone(),
     );
 }
