@@ -5,7 +5,7 @@ use burn::{
     module::Module,
     nn::{
         GroupNorm, GroupNormConfig, Linear, LinearConfig, Sigmoid, SwiGlu,
-        attention::{MultiHeadAttention, MultiHeadAttentionConfig},
+        attention::{MhaInput, MultiHeadAttention, MultiHeadAttentionConfig},
         conv::{Conv2d, Conv2dConfig, ConvTranspose2d, ConvTranspose2dConfig},
         interpolate::{Interpolate2d, Interpolate2dConfig},
     },
@@ -17,46 +17,45 @@ const GN_GROUP_SIZE: usize = 32;
 const GN_EPS: f64 = 1e-5;
 const ATTN_HEAD_DIM: usize = 8;
 
-#[derive(Module, Debug)]
-pub struct SelfAttention2d<B: Backend> {
-    norm: GroupNorm<B>,
-    qkv_proj: Conv2d<B>,
-    out_prog: Conv2d<B>,
-    n_head: usize,
-}
+// #[derive(Module, Debug)]
+// pub struct SelfAttention2d<B: Backend> {
+//     norm: GroupNorm<B>,
+//     qkv_proj: Conv2d<B>,
+//     out_prog: Conv2d<B>,
+//     n_head: usize,
+// }
 
-impl<B: Backend> SelfAttention2d<B> {
-    pub fn forward(&self, input: Tensor<B, 4>) -> Tensor<B, 4> {
-        let [n, c, h, w] = input.dims();
+// impl<B: Backend> SelfAttention2d<B> {
+//     pub fn forward(&self, input: Tensor<B, 4>) -> Tensor<B, 4> {
+//         let [n, c, h, w] = input.dims();
 
-        let x = self.norm.forward(input);
+//         let x = self.norm.forward(input);
 
-        let qkv = self.qkv_proj.forward(x);
-        let qkv = qkv
-            .reshape([n, self.n_head * 3, c / self.n_head, h * w])
-            .transpose()
-            .reshape([n, c / self.n_head, self.n_head * 3, h * w]);
+//         let qkv = self.qkv_proj.forward(x);
+//         let qkv = qkv
+//             .reshape([n, self.n_head * 3, c / self.n_head, h * w])
+//             .flip(axes);
 
-        let qkv = qkv.chunk(3, 1);
-        let (q, k, v) = (qkv[0], qkv[1], qkv[2]);
+//         let qkv = qkv.chunk(3, 1);
+//         let (q, k, v) = (qkv[0], qkv[1], qkv[2]);
 
-        let att = q.matmul(k.tra)
-    }
-}
+//         let att = q.matmul(k.transpose().reshape(shape))
+//     }
+// }
 
-#[derive(Config, Debug)]
-pub struct SelfAttention2dConfig {
-    channels: [usize; 2],
-}
+// #[derive(Config, Debug)]
+// pub struct SelfAttention2dConfig {
+//     channels: [usize; 2],
+// }
 
-impl SelfAttention2dConfig {
-    pub fn init<B: Backend>(&self, device: &B::Device) -> SelfAttention2d<B> {
-        SelfAttention2d {
-            conv: Conv2dConfig::new(self.channels, [3, 3]).init(device),
-            interpolate: Interpolate2dConfig::new().init(),
-        }
-    }
-}
+// impl SelfAttention2dConfig {
+//     pub fn init<B: Backend>(&self, device: &B::Device) -> SelfAttention2d<B> {
+//         SelfAttention2d {
+//             conv: Conv2dConfig::new(self.channels, [3, 3]).init(device),
+//             interpolate: Interpolate2dConfig::new().init(),
+//         }
+//     }
+// }
 
 #[derive(Module, Debug)]
 pub struct FourierFeatures<B: Backend> {
@@ -236,17 +235,18 @@ impl<B: Backend> ResBlock<B> {
         let x = self.conv1.forward(x);
         let x = self.activation1.forward(x);
 
-        let x = self.norm2.forward(input);
+        let x = self.norm2.forward(x);
         let x = self.conv2.forward(x);
         let mut x = self.activation2.forward(x);
 
-        if let Some(pr) = self.proj {
+        if let Some(pr) = &self.proj {
             let r = pr.forward(input);
             x = x.add(r);
         }
 
-        if let Some(att) = self.attn {
-            x = att.forward(x);
+        if let Some(att) = &self.attn {
+            let mha_input = MhaInput::self_attn(x.flatten(1, 2)); // хз почему не сошлось
+            x = att.forward(mha_input).context.unsqueeze(); // хз
         }
 
         x
