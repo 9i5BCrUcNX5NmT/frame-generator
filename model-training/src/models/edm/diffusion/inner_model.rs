@@ -1,4 +1,8 @@
-use burn::{module::Module, nn::Embedding, prelude::Backend};
+use burn::{
+    module::Module,
+    nn::{Embedding, Linear, Sigmoid, conv::Conv2d},
+    prelude::Backend,
+};
 
 use crate::models::edm::blocks::FourierFeatures;
 
@@ -6,6 +10,11 @@ use crate::models::edm::blocks::FourierFeatures;
 pub struct InnerModel<B: Backend> {
     noise_emb: FourierFeatures<B>,
     act_emb: Embedding<B>,
+    cond_proj_1: Linear<B>,
+    cond_proj_act: Sigmoid,
+    cond_proj_1: Linear<B>,
+    conv_in: Conv2d<B>,
+    unet: Unet,
 }
 
 impl<B: Backend> InnerModel<B> {
