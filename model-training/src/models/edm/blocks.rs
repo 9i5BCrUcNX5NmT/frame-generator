@@ -13,37 +13,9 @@ use burn::{
     tensor::{Distribution, Tensor},
 };
 
-const GN_GROUP_SIZE: usize = 32;
+pub const GN_GROUP_SIZE: usize = 32;
 const GN_EPS: f64 = 1e-5;
 const ATTN_HEAD_DIM: usize = 8;
-
-#[derive(Module, Debug)]
-pub struct MyGroupNorm<B: Backend> {
-    norm: GroupNorm<B>,
-}
-
-impl<B: Backend> MyGroupNorm<B> {
-    pub fn forward(&self, input: Tensor<B, 4>) -> Tensor<B, 4> {
-        self.norm.forward(input)
-    }
-}
-
-#[derive(Config, Debug)]
-pub struct MyGroupNormConfig {
-    in_channels: usize,
-}
-
-impl MyGroupNormConfig {
-    pub fn init<B: Backend>(&self, device: &B::Device) -> MyGroupNorm<B> {
-        let num_groups = 1.max(self.in_channels / GN_GROUP_SIZE);
-
-        MyGroupNorm {
-            norm: GroupNormConfig::new(num_groups, self.in_channels)
-                .with_epsilon(GN_EPS)
-                .init(device),
-        }
-    }
-}
 
 #[derive(Module, Debug)]
 pub struct FourierFeatures<B: Backend> {
@@ -131,7 +103,7 @@ impl UpBlockConfig {
 
 #[derive(Module, Debug)]
 pub struct SmallResBlock<B: Backend> {
-    group_norm: MyGroupNorm<B>,
+    group_norm: GroupNorm<B>,
     conv: Conv2d<B>,
     activation: Sigmoid,
     skip_projection: Option<Conv2d<B>>,
@@ -155,7 +127,7 @@ pub struct SmallResBlockConfig {
 impl SmallResBlockConfig {
     pub fn init<B: Backend>(&self, device: &B::Device) -> SmallResBlock<B> {
         SmallResBlock {
-            group_norm: MyGroupNormConfig::new(self.channels[0]).init(device),
+            group_norm: GroupNormConfig::new(self.channels[0], self.channels[0]).init(device),
             conv: Conv2dConfig::new([self.channels[0], self.channels[0]], [3, 3]).init(device),
             activation: Sigmoid,
             skip_projection: if self.channels[0] == self.channels[1] {

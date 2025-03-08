@@ -75,11 +75,9 @@ fn view(state: &State) -> Element<Message> {
                 button(text("Запись")).on_press(Message::Record),
                 button(text("Извлечь кадры из видео")).on_press(Message::VideoProcessing),
                 button(text("Обработать кадры")).on_press(Message::FramesProcessing),
+                button(text("Записать в hdf5")).on_press(Message::WriteData),
             ],
-            row![
-                button(text("Тренировка")).on_press(Message::ModelTraining),
-                button(text("WriteData")).on_press(Message::WriteData),
-            ]
+            row![button(text("Тренировка")).on_press(Message::ModelTraining),]
         ]
         .spacing(10)
     ]
