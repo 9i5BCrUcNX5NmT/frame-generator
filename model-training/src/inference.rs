@@ -14,13 +14,7 @@ use preprocessor::{
     types::MyConstData,
 };
 
-use crate::{
-    // csv_processing::{key_to_num, KeysRecord},
-    data::FrameBatcher,
-    // images::{convert_image_pixel_data_to_images, MyImage},
-    training::TrainingConfig,
-    // types::MyData,
-};
+use crate::{data::FrameBatcher, training::TrainingConfig};
 
 fn infer<B: Backend>(
     artifact_dir: &str,
@@ -59,8 +53,6 @@ fn infer<B: Backend>(
             }
 
             MyImage { pixels }
-            // pixels
-            // vector.iter().map(|v| *v as u8).collect::<Vec<u8>>()
         })
         .collect();
 
@@ -75,18 +67,10 @@ pub fn generate(
     mouse: Vec<[i32; 2]>,
 ) -> DynamicImage {
     let artifact_dir = "tmp/test";
-    // let image_path = "tmp/test/output";
 
     type MyBackend = backend::NdArray<f32>;
     let device = backend::ndarray::NdArrayDevice::default();
-    // type MyBackend = backend::Wgpu<f32, i32>;
-    // let device = backend::wgpu::WgpuDevice::default();
-    // type MyBackend = backend::CudaJit<f32, i32>;
-    // let device = backend::cuda_jit::CudaDevice::default();
 
-    // TODO: хз
-    // let image_path = Path::new(image_path).to_path_buf();
-    // let image_data = load_images_from_directory(image_path).unwrap();
     let my_image = MyImage::from_image(current_image);
 
     // TODO: мб пофиксить?

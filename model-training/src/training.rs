@@ -91,16 +91,6 @@ fn train<B: AutodiffBackend>(artifact_dir: &str, config: TrainingConfig, device:
 
     B::seed(config.seed);
 
-    // let train_dir = "data/images/train";
-    // let test_dir = "data/images/test";
-
-    // let train_images =
-    //     convert_images_to_image_pixel_data(load_images_from_directory(train_dir).unwrap());
-    // let test_images =
-    //     convert_images_to_image_pixel_data(load_images_from_directory(test_dir).unwrap());
-
-    // let keys = load_keys_from_directory("data/keys").unwrap();
-
     let data_path = PathBuf::from_str("data").unwrap();
     let data_path = &data_path.join("hdf5_files");
 

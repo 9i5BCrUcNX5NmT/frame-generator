@@ -138,3 +138,19 @@ impl SmallResBlockConfig {
         }
     }
 }
+
+#[derive(Module, Debug)]
+pub struct UNet<B: Backend> {}
+
+impl<B: Backend> UNet<B> {
+    pub fn forward(&self, input: Tensor<B, 4>) -> Tensor<B, 4> {}
+}
+
+#[derive(Config, Debug)]
+pub struct DownBlockConfig {}
+
+impl DownBlockConfig {
+    pub fn init<B: Backend>(&self, device: &B::Device) -> UNet<B> {
+        UNet {}
+    }
+}

@@ -30,7 +30,7 @@ pub struct UNet<B: Backend> {
     up3: UpBlock<B>,
     up4: UpBlock<B>,
 
-    out_conv: Conv2d<B>,
+    out_conv: ConvTranspose2d<B>,
     adaptive_pool: AdaptiveAvgPool2d,
 }
 
@@ -42,7 +42,7 @@ pub struct UNetConfig {
     base_channels: usize,
     #[config(default = "4")]
     out_channels: usize,
-    #[config(default = "128")]
+    #[config(default = "16")]
     embed_dim: usize,
 }
 
@@ -96,9 +96,8 @@ impl UNetConfig {
             up4: UpBlockConfig::new(self.base_channels * 2, self.base_channels, self.embed_dim)
                 .init(device),
 
-            out_conv: Conv2dConfig::new([self.base_channels, self.out_channels], [1, 1])
+            out_conv: ConvTranspose2dConfig::new([self.base_channels, self.out_channels], [3, 3])
                 .init(device),
-
             adaptive_pool: AdaptiveAvgPool2dConfig::new([HEIGHT, WIDTH]).init(),
         }
     }
@@ -119,17 +118,17 @@ impl<B: Backend> UNet<B> {
         let embed = mouse_emb + keys_emb; // [embed_dim]
 
         // Прямой ход по U-Net
-        let x1 = self.inc.forward(images, embed.clone()); // [channels, height / 9, width / 9]
-        let x2 = self.down1.forward(x1.clone(), embed.clone());
-        let x3 = self.down2.forward(x2.clone(), embed.clone());
-        let x4 = self.down3.forward(x3.clone(), embed.clone());
-        let x5 = self.down4.forward(x4.clone(), embed.clone());
+        let x1 = self.inc.forward(images, embed.clone()); // [channels, height / 3, width / 3]
+        let x2 = self.down1.forward(x1.clone(), embed.clone()); // [channels, height / (3 * 2 * 3), width / (3 * 2 * 3)]
+        let x3 = self.down2.forward(x2.clone(), embed.clone()); // [channels, height / (3 * (2 * 3) * 2), width / (3 * (2 * 3) * 2)]
+        let x4 = self.down3.forward(x3.clone(), embed.clone()); // [channels, height / (3 * (2 * 3) * 3), width / (3 * (2 * 3) * 3)]
+        let x5 = self.down4.forward(x4.clone(), embed.clone()); // [channels, height / (3 * (2 * 3) * 4), width / (3 * (2 * 3) * 4)]
 
         // Обратный ход (skip connections)
-        let d1 = self.up1.forward(x5, x4, embed.clone());
-        let d2 = self.up2.forward(d1, x3, embed.clone());
-        let d3 = self.up3.forward(d2, x2, embed.clone());
-        let d4 = self.up4.forward(d3, x1, embed);
+        let d1 = self.up1.forward(x5, x4, embed.clone()); // [channels, height / (3 * (2 * 3) * 3), width / (3 * (2 * 3) * 3)]
+        let d2 = self.up2.forward(d1, x3, embed.clone()); // [channels, height / (3 * (2 * 3) * 2), width / (3 * (2 * 3) * 2)]
+        let d3 = self.up3.forward(d2, x2, embed.clone()); // [channels, height / (3 * 2 * 3), width / (3 * 2 * 3)]
+        let d4 = self.up4.forward(d3, x1, embed); // [channels, height / 3, width / 3]
 
         let out = self.out_conv.forward(d4);
         let out = self.adaptive_pool.forward(out);
