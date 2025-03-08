@@ -1,2 +1,2 @@
-mod blocks;
-mod diffusion;
+pub mod blocks;
+pub mod diffusion;
