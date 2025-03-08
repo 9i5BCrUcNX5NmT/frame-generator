@@ -4,58 +4,18 @@ use burn::{
     config::Config,
     module::Module,
     nn::{
-        GroupNorm, GroupNormConfig, Linear, LinearConfig, Sigmoid, SwiGlu,
+        GroupNorm, GroupNormConfig, Linear, LinearConfig, Sigmoid,
         attention::{MhaInput, MultiHeadAttention, MultiHeadAttentionConfig},
         conv::{Conv2d, Conv2dConfig, ConvTranspose2d, ConvTranspose2dConfig},
         interpolate::{Interpolate2d, Interpolate2dConfig},
     },
     prelude::Backend,
-    tensor::Tensor,
+    tensor::{Distribution, Tensor},
 };
 
 const GN_GROUP_SIZE: usize = 32;
 const GN_EPS: f64 = 1e-5;
 const ATTN_HEAD_DIM: usize = 8;
-
-// #[derive(Module, Debug)]
-// pub struct SelfAttention2d<B: Backend> {
-//     norm: GroupNorm<B>,
-//     qkv_proj: Conv2d<B>,
-//     out_prog: Conv2d<B>,
-//     n_head: usize,
-// }
-
-// impl<B: Backend> SelfAttention2d<B> {
-//     pub fn forward(&self, input: Tensor<B, 4>) -> Tensor<B, 4> {
-//         let [n, c, h, w] = input.dims();
-
-//         let x = self.norm.forward(input);
-
-//         let qkv = self.qkv_proj.forward(x);
-//         let qkv = qkv
-//             .reshape([n, self.n_head * 3, c / self.n_head, h * w])
-//             .flip(axes);
-
-//         let qkv = qkv.chunk(3, 1);
-//         let (q, k, v) = (qkv[0], qkv[1], qkv[2]);
-
-//         let att = q.matmul(k.transpose().reshape(shape))
-//     }
-// }
-
-// #[derive(Config, Debug)]
-// pub struct SelfAttention2dConfig {
-//     channels: [usize; 2],
-// }
-
-// impl SelfAttention2dConfig {
-//     pub fn init<B: Backend>(&self, device: &B::Device) -> SelfAttention2d<B> {
-//         SelfAttention2d {
-//             conv: Conv2dConfig::new(self.channels, [3, 3]).init(device),
-//             interpolate: Interpolate2dConfig::new().init(),
-//         }
-//     }
-// }
 
 #[derive(Module, Debug)]
 pub struct FourierFeatures<B: Backend> {
@@ -81,11 +41,7 @@ impl FourierFeaturesConfig {
     pub fn init<B: Backend>(&self, device: &B::Device) -> FourierFeatures<B> {
         assert!(self.cond_channels % 2 == 0); // зачем?
 
-        let weight = Tensor::random(
-            [1, self.cond_channels / 2],
-            burn::tensor::Distribution::Default,
-            device,
-        );
+        let weight = Tensor::random([1, self.cond_channels / 2], Distribution::Default, device);
 
         FourierFeatures { weight }
     }
@@ -104,13 +60,14 @@ impl<B: Backend> DownBlock<B> {
 
 #[derive(Config, Debug)]
 pub struct DownBlockConfig {
-    channels: [usize; 2],
+    in_channels: usize,
 }
 
 impl DownBlockConfig {
     pub fn init<B: Backend>(&self, device: &B::Device) -> DownBlock<B> {
         DownBlock {
-            conv: ConvTranspose2dConfig::new(self.channels, [3, 3]).init(device),
+            conv: ConvTranspose2dConfig::new([self.in_channels, self.in_channels], [3, 3])
+                .init(device),
         }
     }
 }
@@ -132,13 +89,13 @@ impl<B: Backend> UpBlock<B> {
 
 #[derive(Config, Debug)]
 pub struct UpBlockConfig {
-    channels: [usize; 2],
+    in_channels: usize,
 }
 
 impl UpBlockConfig {
     pub fn init<B: Backend>(&self, device: &B::Device) -> UpBlock<B> {
         UpBlock {
-            conv: Conv2dConfig::new(self.channels, [3, 3]).init(device),
+            conv: Conv2dConfig::new([self.in_channels, self.in_channels], [3, 3]).init(device),
             interpolate: Interpolate2dConfig::new().init(),
         }
     }
@@ -294,7 +251,6 @@ impl<B: Backend> ResBlocks<B> {
     pub fn forward(
         &self,
         input: Tensor<B, 4>,
-        cond: Tensor<B, 4>,
         to_cat: Option<Vec<Tensor<B, 4>>>,
     ) -> (Tensor<B, 4>, Vec<Tensor<B, 4>>) {
         let mut x = input;
@@ -333,6 +289,145 @@ impl ResBlocksConfig {
                         .init(device)
                 })
                 .collect(),
+        }
+    }
+}
+
+#[derive(Module, Debug)]
+pub struct UNet<B: Backend> {
+    down_blocks: Vec<ResBlocks<B>>,
+    up_blocks: Vec<ResBlocks<B>>,
+    mid_blocks: ResBlocks<B>,
+    downsamples: Vec<Option<DownBlock<B>>>,
+    upsamples: Vec<Option<UpBlock<B>>>,
+    num_down: usize,
+}
+
+impl<B: Backend> UNet<B> {
+    pub fn forward(
+        &self,
+        input: Tensor<B, 4>,
+    ) -> (Tensor<B, 4>, Vec<Vec<Tensor<B, 4>>>, Vec<Vec<Tensor<B, 4>>>) {
+        let [_, c, h, w] = input.dims();
+        let n = self.num_down;
+
+        let two_n = 2_usize.pow(n as u32);
+        let padding_h = h.div_ceil(two_n) * two_n - h;
+        let padding_w = w.div_ceil(two_n) * two_n - w;
+        let mut x = input.pad((0, padding_w, 0, padding_h), 0.0);
+
+        let mut down_outputs = vec![];
+        for (block, down) in self.down_blocks.iter().zip(&self.downsamples) {
+            let x_down = if let Some(down) = down {
+                down.forward(x)
+            } else {
+                x
+            };
+            let (x_out, block_outputs) = block.forward(x_down, None);
+
+            x = x_out;
+            down_outputs.push(block_outputs);
+        }
+
+        let (mut x, _) = self.mid_blocks.forward(x, None);
+
+        down_outputs.reverse();
+
+        let mut up_outputs = vec![];
+        for ((block, up), skip) in self
+            .up_blocks
+            .iter()
+            .zip(&self.upsamples)
+            .zip(&down_outputs)
+        {
+            let mut skip = skip.clone();
+            skip.reverse();
+
+            let x_up = if let Some(up) = up { up.forward(x) } else { x };
+            let (x_out, block_outputs) = block.forward(x_up, Some(skip.to_vec()));
+
+            x = x_out;
+            up_outputs.push(block_outputs);
+        }
+
+        let new_b = x.dims()[0];
+        let x = x.slice([0..new_b, 0..c, 0..h, 0..w]);
+
+        (x, down_outputs, up_outputs)
+    }
+}
+
+#[derive(Config, Debug)]
+pub struct UNetConfig {
+    cond_channels: usize,
+    channels: Vec<usize>,
+    depths: Vec<usize>,
+    attn_depths: Vec<bool>,
+}
+
+impl UNetConfig {
+    pub fn init<B: Backend>(&self, device: &B::Device) -> UNet<B> {
+        let num_down = self.channels.len() - 1;
+
+        let mut down_blocks = vec![];
+        let mut up_blocks = vec![];
+
+        for (i, n) in self.depths.iter().enumerate() {
+            let c1 = self.channels[0.max(i - 1)];
+            let c2 = self.channels[i];
+
+            let mut channels = vec![];
+            channels.push([c1, c2]);
+            for _ in 0..(n - 1) {
+                channels.push([c1, c2]);
+            }
+
+            down_blocks.push(
+                ResBlocksConfig::new(channels, self.cond_channels, self.attn_depths[i])
+                    .init(device),
+            );
+
+            let mut channels = vec![];
+            channels.push([c2 * 2, c2]);
+            for _ in 0..(n - 1) {
+                channels.push([c2 * 2, c2]);
+            }
+            channels.push([c1 + c2, c1]);
+
+            up_blocks.push(
+                ResBlocksConfig::new(channels, self.cond_channels, self.attn_depths[i])
+                    .init(device),
+            );
+        }
+
+        let last_channel = *self.channels.last().unwrap();
+        let mid_blocks = ResBlocksConfig::new(
+            vec![[last_channel, last_channel], [last_channel, last_channel]],
+            self.cond_channels,
+            true,
+        )
+        .init(device);
+
+        let mut channels_without_last = self.channels[..(self.channels.len() - 1)].to_vec();
+        let mut downsamples = vec![None];
+        for channel in channels_without_last.iter() {
+            downsamples.push(Some(DownBlockConfig::new(*channel).init(device)));
+        }
+
+        channels_without_last.reverse();
+
+        let mut upsamples = vec![None];
+        for channel in channels_without_last.iter() {
+            upsamples.push(Some(UpBlockConfig::new(*channel).init(device)));
+        }
+
+        UNet {
+            down_blocks,
+            up_blocks,
+            mid_blocks,
+            downsamples,
+            upsamples,
+            num_down,
         }
     }
 }
