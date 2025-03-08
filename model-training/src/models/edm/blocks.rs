@@ -18,6 +18,34 @@ const GN_EPS: f64 = 1e-5;
 const ATTN_HEAD_DIM: usize = 8;
 
 #[derive(Module, Debug)]
+pub struct MyGroupNorm<B: Backend> {
+    norm: GroupNorm<B>,
+}
+
+impl<B: Backend> MyGroupNorm<B> {
+    pub fn forward(&self, input: Tensor<B, 4>) -> Tensor<B, 4> {
+        self.norm.forward(input)
+    }
+}
+
+#[derive(Config, Debug)]
+pub struct MyGroupNormConfig {
+    in_channels: usize,
+}
+
+impl MyGroupNormConfig {
+    pub fn init<B: Backend>(&self, device: &B::Device) -> MyGroupNorm<B> {
+        let num_groups = 1.max(self.in_channels / GN_GROUP_SIZE);
+
+        MyGroupNorm {
+            norm: GroupNormConfig::new(num_groups, self.in_channels)
+                .with_epsilon(GN_EPS)
+                .init(device),
+        }
+    }
+}
+
+#[derive(Module, Debug)]
 pub struct FourierFeatures<B: Backend> {
     weight: Tensor<B, 2>,
 }
@@ -103,7 +131,7 @@ impl UpBlockConfig {
 
 #[derive(Module, Debug)]
 pub struct SmallResBlock<B: Backend> {
-    group_norm: GroupNorm<B>,
+    group_norm: MyGroupNorm<B>,
     conv: Conv2d<B>,
     activation: Sigmoid,
     skip_projection: Option<Conv2d<B>>,
@@ -127,7 +155,7 @@ pub struct SmallResBlockConfig {
 impl SmallResBlockConfig {
     pub fn init<B: Backend>(&self, device: &B::Device) -> SmallResBlock<B> {
         SmallResBlock {
-            group_norm: GroupNormConfig::new(self.channels[0], self.channels[0]).init(device),
+            group_norm: MyGroupNormConfig::new(self.channels[0]).init(device),
             conv: Conv2dConfig::new([self.channels[0], self.channels[0]], [3, 3]).init(device),
             activation: Sigmoid,
             skip_projection: if self.channels[0] == self.channels[1] {
@@ -146,10 +174,10 @@ pub struct AdaGroupNorm<B: Backend> {
 }
 
 impl<B: Backend> AdaGroupNorm<B> {
-    pub fn forward(&self, input: Tensor<B, 4>) -> Tensor<B, 4> {
+    pub fn forward(&self, input: Tensor<B, 4>, cond: Tensor<B, 2>) -> Tensor<B, 4> {
         let x = self.group_norm.forward(input.clone());
 
-        let y = self.linear.forward(input);
+        let y = self.linear.forward(cond).unsqueeze();
         let y = y.chunk(2, 1);
         let (scale, shift) = (y[0].clone(), y[1].clone());
 
@@ -187,12 +215,12 @@ pub struct ResBlock<B: Backend> {
 }
 
 impl<B: Backend> ResBlock<B> {
-    pub fn forward(&self, input: Tensor<B, 4>) -> Tensor<B, 4> {
-        let x = self.norm1.forward(input.clone());
+    pub fn forward(&self, input: Tensor<B, 4>, cond: Tensor<B, 2>) -> Tensor<B, 4> {
+        let x = self.norm1.forward(input.clone(), cond.clone());
         let x = self.conv1.forward(x);
         let x = self.activation1.forward(x);
 
-        let x = self.norm2.forward(x);
+        let x = self.norm2.forward(x, cond);
         let x = self.conv2.forward(x);
         let mut x = self.activation2.forward(x);
 
@@ -252,6 +280,7 @@ impl<B: Backend> ResBlocks<B> {
         &self,
         input: Tensor<B, 4>,
         to_cat: Option<Vec<Tensor<B, 4>>>,
+        cond: Tensor<B, 2>,
     ) -> (Tensor<B, 4>, Vec<Tensor<B, 4>>) {
         let mut x = input;
         let mut outputs = vec![];
@@ -263,7 +292,7 @@ impl<B: Backend> ResBlocks<B> {
                 x
             };
 
-            x = res_block.forward(x);
+            x = res_block.forward(x, cond.clone());
             outputs.push(x.clone());
         }
 
@@ -307,6 +336,7 @@ impl<B: Backend> UNet<B> {
     pub fn forward(
         &self,
         input: Tensor<B, 4>,
+        cond: Tensor<B, 2>,
     ) -> (Tensor<B, 4>, Vec<Vec<Tensor<B, 4>>>, Vec<Vec<Tensor<B, 4>>>) {
         let [_, c, h, w] = input.dims();
         let n = self.num_down;
@@ -323,13 +353,13 @@ impl<B: Backend> UNet<B> {
             } else {
                 x
             };
-            let (x_out, block_outputs) = block.forward(x_down, None);
+            let (x_out, block_outputs) = block.forward(x_down, None, cond.clone());
 
             x = x_out;
             down_outputs.push(block_outputs);
         }
 
-        let (mut x, _) = self.mid_blocks.forward(x, None);
+        let (mut x, _) = self.mid_blocks.forward(x, None, cond.clone());
 
         down_outputs.reverse();
 
@@ -344,7 +374,7 @@ impl<B: Backend> UNet<B> {
             skip.reverse();
 
             let x_up = if let Some(up) = up { up.forward(x) } else { x };
-            let (x_out, block_outputs) = block.forward(x_up, Some(skip.to_vec()));
+            let (x_out, block_outputs) = block.forward(x_up, Some(skip.to_vec()), cond.clone());
 
             x = x_out;
             up_outputs.push(block_outputs);
