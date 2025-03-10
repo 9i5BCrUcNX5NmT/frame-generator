@@ -1,7 +1,10 @@
 use burn::{
+    config::Config,
+    module::Module,
     prelude::Backend,
     tensor::{Float, Shape, Tensor},
 };
+use serde::Deserialize;
 
 use super::inner_model::{InnerModel, InnerModelConfig};
 
@@ -24,6 +27,7 @@ struct Conditioners<B: Backend, const D: usize> {
     c_noise: Tensor<B, D>,
 }
 
+#[derive(Debug, Deserialize)]
 struct SigmaDistributionConfig {
     loc: f64,
     scale: f64,
@@ -46,6 +50,7 @@ impl<B: Backend> Denoiser<B> {
 pub struct DenoiserConfig {
     sigma_data: f64,
     sigma_offset_noise: f64,
+    sigma_distribution_config: SigmaDistributionConfig,
     inner_model_config: InnerModelConfig,
 }
 
@@ -56,20 +61,20 @@ impl DenoiserConfig {
         }
     }
 
-    fn setup_training(&self, cfg: SigmaDistributionConfig) {
-        assert!(self.s)
-    }
+    // fn setup_training(&mut self, cfg: SigmaDistributionConfig) -> &mut Self {
+    //     assert!(self.sample_sigma_training.is_none());
+    // }
 
-    fn sample_sigma<B: Backend>(
-        n: usize,
-        cfg: SigmaDistributionConfig,
-        device: &B::Device,
-    ) -> Tensor<B, 1> {
+    fn sample_sigma<B: Backend>(&self, n: usize, device: &B::Device) -> Tensor<B, 1> {
         let sigma: Tensor<B, 1, Float> =
             Tensor::random([n], burn::tensor::Distribution::Default, device);
-        let sigma = sigma * cfg.scale + cfg.loc;
-        let sigma = sigma.exp().
+        let sigma =
+            sigma * self.sigma_distribution_config.scale + self.sigma_distribution_config.loc;
+        let sigma = sigma.exp().clamp(
+            self.sigma_distribution_config.sigma_min,
+            self.sigma_distribution_config.sigma_max,
+        );
 
-        todo!()
+        sigma
     }
 }
