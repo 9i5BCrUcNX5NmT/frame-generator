@@ -1,75 +1,27 @@
 use std::{path::PathBuf, str::FromStr};
 
-use crate::{
-    data::{FrameBatch, FrameBatcher},
-    models::unet::model::{UNet, UNetConfig},
-};
+use crate::{data::FrameBatcher, models::baseline::model::BaselineConfig};
 use burn::{
     backend::{self, Autodiff},
     data::{dataloader::DataLoaderBuilder, dataset::InMemDataset},
-    nn::loss::MseLoss,
     optim::AdamConfig,
     prelude::*,
     record::CompactRecorder,
     tensor::backend::AutodiffBackend,
-    train::{
-        LearnerBuilder, RegressionOutput, TrainOutput, TrainStep, ValidStep, metric::LossMetric,
-    },
+    train::{LearnerBuilder, metric::LossMetric},
 };
 
-use burn::{prelude::Backend, tensor::Tensor};
 use preprocessor::{hdf5_processing::read_all_hdf5_files, types::MyConstData};
-
-impl<B: Backend> UNet<B> {
-    pub fn forward_generation(
-        &self,
-        inputs: Tensor<B, 4>,
-        keys: Tensor<B, 2>,
-        mouse: Tensor<B, 3>,
-        targets: Tensor<B, 4>,
-    ) -> RegressionOutput<B> {
-        let output = self.forward(inputs, keys, mouse);
-
-        let loss =
-            MseLoss::new().forward(output.clone(), targets.clone(), nn::loss::Reduction::Auto);
-
-        let [batch_size, color, height, width] = output.dims();
-        let output_2d = output.reshape([batch_size, color * height * width]);
-
-        let [batch_size, color, height, width] = targets.dims();
-        let targets_2d = targets.reshape([batch_size, color * height * width]);
-
-        RegressionOutput {
-            loss,
-            output: output_2d,
-            targets: targets_2d,
-        }
-    }
-}
-
-impl<B: AutodiffBackend> TrainStep<FrameBatch<B>, RegressionOutput<B>> for UNet<B> {
-    fn step(&self, batch: FrameBatch<B>) -> TrainOutput<RegressionOutput<B>> {
-        let item = self.forward_generation(batch.images, batch.keys, batch.mouse, batch.targets);
-
-        TrainOutput::new(self, item.loss.backward(), item)
-    }
-}
-
-impl<B: Backend> ValidStep<FrameBatch<B>, RegressionOutput<B>> for UNet<B> {
-    fn step(&self, batch: FrameBatch<B>) -> RegressionOutput<B> {
-        self.forward_generation(batch.images, batch.keys, batch.mouse, batch.targets)
-    }
-}
 
 #[derive(Config)]
 pub(crate) struct TrainingConfig {
-    pub model: UNetConfig,
+    pub model: BaselineConfig,
     pub optimizer: AdamConfig,
-    #[config(default = 10)]
+    #[config(default = 20)]
     pub num_epochs: usize,
-    #[config(default = 8)]
+    #[config(default = 64)]
     pub batch_size: usize,
-    #[config(default = 4)]
+    #[config(default = 16)]
     pub num_workers: usize,
     #[config(default = 42)]
     pub seed: u64,
@@ -145,16 +97,16 @@ pub fn run() {
 
     // type MyBackend = backend::NdArray<f32>;
     // let device = backend::ndarray::NdArrayDevice::default();
-    type MyBackend = backend::Wgpu<f32, i32>;
-    let device = backend::wgpu::WgpuDevice::default();
-    // type MyBackend = backend::CudaJit<f32, i32>;
-    // let device = backend::cuda_jit::CudaDevice::default();
+    // type MyBackend = backend::Wgpu<f32, i32>;
+    // let device = backend::wgpu::WgpuDevice::default();
+    type MyBackend = backend::CudaJit<f32, i32>;
+    let device = backend::cuda_jit::CudaDevice::default();
 
     type MyAutodiffBackend = Autodiff<MyBackend>;
 
     crate::training::train::<MyAutodiffBackend>(
         artifact_dir,
-        TrainingConfig::new(UNetConfig::new(), AdamConfig::new()),
+        TrainingConfig::new(BaselineConfig::new(), AdamConfig::new()),
         device.clone(),
     );
 }

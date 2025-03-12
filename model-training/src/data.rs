@@ -51,7 +51,7 @@ impl<B: Backend> FrameBatcher<B> {
             .map(|data| Tensor::<B, 2>::from_data(data, &self.device))
             .map(|tensor| tensor.reshape([1, 2, MOUSE_VECTOR_LENGTH]))
             // // Простая нормализация
-            .map(|tensor| tensor / 255)
+            // .map(|tensor| tensor.div_scalar(255))
             .collect();
 
         Tensor::cat(mouse, 0)
@@ -65,7 +65,7 @@ impl<B: Backend> FrameBatcher<B> {
             // 1 штука, 4 параметра цвета
             .map(|tensor| tensor.reshape([1, 4, HEIGHT, WIDTH]))
             // Простая нормализация цветов
-            .map(|tensor| tensor / 255)
+            .map(|tensor| tensor.div_scalar(255))
             .collect();
 
         Tensor::cat(images, 0)

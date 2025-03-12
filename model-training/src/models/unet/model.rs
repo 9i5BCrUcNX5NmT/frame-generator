@@ -1,7 +1,6 @@
 use burn::{
     nn::{
-        Linear, LinearConfig, Relu,
-        conv::{Conv2d, Conv2dConfig, ConvTranspose2d, ConvTranspose2dConfig},
+        conv::{ConvTranspose2d, ConvTranspose2dConfig},
         pool::{AdaptiveAvgPool2d, AdaptiveAvgPool2dConfig},
     },
     prelude::*,
