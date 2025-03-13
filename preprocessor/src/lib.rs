@@ -4,21 +4,21 @@ use csv_processing::load_records_from_directory;
 
 use common::*;
 use hdf5_processing::{read_all_hdf5_files, write_data_to_hdf5_files};
-use images::{load_images_from_directory, process_images, MyImage};
+use images::{MyImage, load_images_from_directory, process_images};
 use types::MyConstData;
-use videos::process_videos;
+// use videos::process_videos;
 
 pub mod csv_processing;
 pub mod hdf5_processing;
 pub mod images;
 pub mod types;
-mod videos;
+// mod videos;
 
-pub fn process_my_videos() {
-    std::fs::create_dir_all("data/images/raw").unwrap();
+// pub fn process_my_videos() {
+//     std::fs::create_dir_all("data/images/raw").unwrap();
 
-    process_videos("data/videos/video.mp4", "data/images/raw/");
-}
+//     process_videos("data/videos/video.mp4", "data/images/raw/");
+// }
 
 pub fn process_my_images() {
     let input_dir = &PathBuf::from_str("data/images/raw").unwrap(); // Путь к входной папке с изображениями

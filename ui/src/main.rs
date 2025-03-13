@@ -1,6 +1,4 @@
-use std::path::PathBuf;
-use std::str::FromStr;
-use std::{fs, thread};
+use std::thread;
 
 use iced::keyboard::{Key, Modifiers, on_key_press};
 use iced::widget::{button, column, container, image, mouse_area, row, text};
@@ -18,7 +16,6 @@ enum Message {
     ReloadImage,
     ModelTraining,
     Record,
-    VideoProcessing,
     FramesProcessing,
     WriteData,
     CheckData,
@@ -43,11 +40,7 @@ fn view(state: &State) -> Element<Message> {
             .spacing(10),
             column![
                 text("Status"),
-                text(format!("Записанное видео: {}", state.data_status.video)),
-                text(format!(
-                    "Извлечение кадров: {}",
-                    state.data_status.images_from_frames
-                )),
+                // text(format!("Записанное видео: {}", state.data_status.video)),
                 text(format!(
                     "Преобразование кадров: {}",
                     state.data_status.resized_images
@@ -73,7 +66,6 @@ fn view(state: &State) -> Element<Message> {
             ],
             row![
                 button(text("Запись")).on_press(Message::Record),
-                button(text("Извлечь кадры из видео")).on_press(Message::VideoProcessing),
                 button(text("Обработать кадры")).on_press(Message::FramesProcessing),
                 button(text("Записать в hdf5")).on_press(Message::WriteData),
             ],
@@ -119,7 +111,7 @@ fn update(state: &mut State, message: Message) {
             state.image = Some(match &state.image {
                 Some(image_handle) => generate_frame(image_handle, keys, mouse),
                 None => generate_frame(
-                    &image::Handle::from_path("data/images/resized_images/out_0001.png"),
+                    &image::Handle::from_path("data/images/resized_images/image-0.png"),
                     keys,
                     mouse,
                 ),
@@ -131,15 +123,15 @@ fn update(state: &mut State, message: Message) {
         Message::Record => {
             thread::spawn(|| recorder::run());
         }
-        Message::VideoProcessing => {
-            thread::spawn(|| preprocessor::process_my_videos());
-        }
+        // Message::VideoProcessing => {
+        //     thread::spawn(|| preprocessor::process_my_videos());
+        // }
         Message::FramesProcessing => {
             thread::spawn(|| preprocessor::process_my_images());
         }
         Message::ReloadImage => {
             state.image = Some(image::Handle::from_path(
-                "data/images/resized_images/out_0001.png",
+                "data/images/resized_images/image-0.png",
             ))
         }
         Message::WriteData => preprocessor::write_my_data(),

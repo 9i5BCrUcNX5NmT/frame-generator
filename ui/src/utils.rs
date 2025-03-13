@@ -366,7 +366,7 @@ pub fn generate_frame(
 
 #[derive(Default)]
 pub struct DataStatus {
-    pub video: bool,
+    // pub video: bool,
     pub images_from_frames: bool,
     pub resized_images: bool,
     pub hdf5_files: bool,
@@ -381,7 +381,7 @@ pub fn check_data(state: &mut State) {
 
     let images_path = data_path.join("images");
 
-    state.data_status.video = check_dir_not_empty(&data_path.join("videos"));
+    // state.data_status.video = check_dir_not_empty(&data_path.join("videos"));
     state.data_status.images_from_frames = check_dir_not_empty(&images_path.join("raw"));
     state.data_status.resized_images = check_dir_not_empty(&images_path.join("resized_images"));
 }

@@ -1,10 +1,15 @@
 use std::{
     fs::OpenOptions,
+    path::PathBuf,
+    str::FromStr,
+    sync::{Arc, Mutex},
     thread::{self, sleep},
     time::Duration,
 };
 
+use common::DATA_DIR;
 use csv::Writer;
+use fs_extra::dir;
 use keys_recorder::KeysRecorder;
 use rdev::listen;
 use video_recorder::VideoRecorder;
@@ -12,39 +17,50 @@ use video_recorder::VideoRecorder;
 mod keys_recorder;
 mod video_recorder;
 
-pub(crate) const DATA_DIR: &str = "data/";
-
 pub fn run() {
-    std::fs::create_dir_all(DATA_DIR.to_owned() + "keys").unwrap();
-    std::fs::create_dir_all(DATA_DIR.to_owned() + "videos").unwrap();
+    // TODO: не лучшее решение
+    dir::create(DATA_DIR, true).unwrap();
 
-    let file_path = DATA_DIR.to_owned() + "keys/key_events.csv";
+    let images_path = PathBuf::from_str(DATA_DIR).unwrap().join("images");
+    let keys_path = PathBuf::from_str(DATA_DIR).unwrap().join("keys");
+
+    dir::create_all(&images_path, true).unwrap();
+    dir::create_all(&keys_path, true).unwrap();
 
     let mut writer = Writer::from_writer(
         OpenOptions::new()
             .append(true)
             .create(true)
-            .open(file_path)
+            .open(keys_path.join("key_events.csv"))
             .unwrap(),
     );
 
-    let keys_recorder = KeysRecorder::new();
-    let keys_recorder_clone = keys_recorder.clone();
+    let keys_recorder = Arc::new(Mutex::new(KeysRecorder::new()));
+    let keys_recorder_clone_1 = keys_recorder.clone();
+    let keys_recorder_clone_2 = keys_recorder.clone();
 
-    let vider_recorder = VideoRecorder::start_recording();
-    let vider_recorder_clone = vider_recorder.clone();
+    let vider_recorder = Arc::new(Mutex::new(VideoRecorder::new(images_path.join("raw"))));
+    let vider_recorder_clone_1 = vider_recorder.clone();
+    let vider_recorder_clone_2 = vider_recorder.clone();
 
+    vider_recorder.lock().unwrap().start();
+
+    println!("Record started");
     thread::spawn(|| {
         listen(move |event| {
-            keys_recorder_clone.lock().unwrap().insert_key(&event);
-            vider_recorder_clone.lock().unwrap().control_capture(&event);
+            keys_recorder_clone_1.lock().unwrap().insert_key(&event);
+            vider_recorder_clone_1.lock().unwrap().check_keys(&event);
         })
         .unwrap();
     });
 
-    while !vider_recorder.lock().unwrap().is_finished() {
+    while !vider_recorder_clone_2.lock().unwrap().is_finished() {
         sleep(Duration::from_micros(50));
 
-        keys_recorder.lock().unwrap().write_keys(&mut writer);
+        keys_recorder_clone_2
+            .lock()
+            .unwrap()
+            .write_keys(&mut writer);
     }
+    println!("Record was end");
 }

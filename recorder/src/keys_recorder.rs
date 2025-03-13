@@ -2,7 +2,6 @@ use csv::Writer;
 use rdev::{Event, EventType};
 use std::collections::HashSet;
 use std::fs::File;
-use std::sync::{Arc, Mutex};
 
 use serde::Serialize;
 
@@ -18,11 +17,11 @@ pub struct KeysRecorder {
 }
 
 impl KeysRecorder {
-    pub fn new() -> Arc<Mutex<Self>> {
-        Arc::new(Mutex::new(Self {
+    pub fn new() -> Self {
+        Self {
             key_states: HashSet::new(),
             mouse_states: HashSet::new(),
-        }))
+        }
     }
 
     pub fn insert_key(&mut self, event: &Event) {

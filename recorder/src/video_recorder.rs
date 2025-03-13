@@ -1,136 +1,58 @@
-use std::error::Error;
-use std::io::{self, Write};
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
-use std::time::Instant;
+use std::thread::{self, JoinHandle};
+use std::time::Duration;
 
+use fs_extra::dir;
 use rdev::{Event, EventType};
-use windows_capture::capture::{Context, GraphicsCaptureApiHandler};
-use windows_capture::encoder::{
-    AudioSettingsBuilder, ContainerSettingsBuilder, VideoEncoder, VideoSettingsBuilder,
-};
-use windows_capture::frame::Frame;
-use windows_capture::graphics_capture_api::InternalCaptureControl;
-use windows_capture::monitor::Monitor;
-use windows_capture::settings::{ColorFormat, CursorCaptureSettings, DrawBorderSettings, Settings};
+use xcap::Monitor;
 
-// Handles capture events.
-struct Capture {
-    // The video encoder that will be used to encode the frames.
-    encoder: Option<VideoEncoder>,
-    // To measure the time the capture has been running
-    start: Instant,
-    should_stop: bool, // Состояние записи
-}
-
-impl GraphicsCaptureApiHandler for Capture {
-    // The type of flags used to get the values from the settings.
-    type Flags = String;
-
-    // The type of error that can be returned from `CaptureControl` and `start` functions.
-    type Error = Box<dyn std::error::Error + Send + Sync>;
-
-    // Function that will be called to create a new instance. The flags can be passed from settings.
-    fn new(ctx: Context<Self::Flags>) -> Result<Self, Self::Error> {
-        println!("Created with Flags: {}", ctx.flags);
-
-        let encoder = VideoEncoder::new(
-            VideoSettingsBuilder::new(2560, 1440),
-            AudioSettingsBuilder::default().disabled(true),
-            ContainerSettingsBuilder::default(),
-            "data/videos/video.mp4",
-        )?;
-
-        Ok(Self {
-            encoder: Some(encoder),
-            start: Instant::now(),
-            should_stop: false, // Инициализация состояния записи
-        })
-    }
-
-    // Called every time a new frame is available.
-    fn on_frame_arrived(
-        &mut self,
-        frame: &mut Frame,
-        capture_control: InternalCaptureControl,
-    ) -> Result<(), Self::Error> {
-        print!(
-            "\rRecording for: {} seconds",
-            self.start.elapsed().as_secs()
-        );
-        io::stdout().flush()?;
-
-        // Send the frame to the video encoder
-        self.encoder.as_mut().unwrap().send_frame(frame)?;
-
-        // Note: The frame has other uses too, for example, you can save a single frame to a file, like this:
-        // frame.save_as_image("frame.png", ImageFormat::Png)?;
-        // Or get the raw data like this so you have full control:
-        // let data = frame.buffer()?;
-
-        // Stop the capture after 6 seconds
-        // if self.start.elapsed().as_secs() >= 6 {
-        //     // Finish the encoder and save the video.
-        //     self.encoder.take().unwrap().finish()?;
-
-        //     capture_control.stop();
-
-        //     // Because there wasn't any new lines in previous prints
-        //     println!();
-        // }
-
-        // Проверяем состояние записи
-        if self.should_stop {
-            // Завершите кодировщик и сохраните видео.
-            self.encoder.take().unwrap().finish()?;
-            capture_control.stop();
-            println!();
-        }
-
-        Ok(())
-    }
-
-    // Optional handler called when the capture item (usually a window) closes.
-    fn on_closed(&mut self) -> Result<(), Self::Error> {
-        println!("Capture session ended");
-
-        Ok(())
-    }
-}
-
+#[derive(Clone)]
 pub struct VideoRecorder {
-    capture: windows_capture::capture::CaptureControl<Capture, Box<dyn Error + Send + Sync>>,
+    should_stop: Arc<Mutex<bool>>,
+    path_to_images: PathBuf,
 }
 
 impl VideoRecorder {
-    pub fn start_recording() -> Arc<Mutex<Self>> {
-        // Gets the foreground window, refer to the docs for other capture items
-        let primary_monitor = Monitor::primary().expect("There is no primary monitor");
-
-        let settings = Settings::new(
-            // Item to capture
-            primary_monitor,
-            // Capture cursor settings
-            CursorCaptureSettings::Default,
-            // Draw border settings
-            DrawBorderSettings::Default,
-            // The desired color format for the captured frame.
-            ColorFormat::Bgra8,
-            // Additional flags for the capture settings that will be passed to user defined `new` function.
-            "Yea this works".to_string(),
-        );
-
-        let capture = Capture::start_free_threaded(settings).expect("Screen capture failed");
-
-        Arc::new(Mutex::new(Self { capture }))
+    pub fn new(path_to_images: PathBuf) -> Self {
+        Self {
+            should_stop: Arc::new(Mutex::new(false)),
+            path_to_images,
+        }
     }
 
-    pub fn control_capture(&mut self, event: &Event) {
-        let capture_callback = self.capture.callback();
+    pub fn start(&self) -> JoinHandle<()> {
+        let path_to_images = self.path_to_images.clone();
+        let should_stop = self.should_stop.clone();
 
+        dir::create_all(path_to_images.clone(), true).unwrap();
+
+        // Запускаем поток для захвата изображений
+        thread::spawn(move || {
+            let monitors = Monitor::all().unwrap();
+            let monitor = &monitors[0];
+
+            let mut count = 0;
+
+            while !*should_stop.lock().unwrap() {
+                let image = monitor.capture_image().unwrap();
+                let file_path = path_to_images.join(format!("image-{}.png", count));
+                image.save(file_path).unwrap();
+                count += 1;
+
+                // Ждем 1/20 секунды
+                thread::sleep(Duration::from_millis(50));
+            }
+        })
+    }
+
+    pub fn check_keys(&mut self, event: &Event) {
         match event.event_type {
             EventType::KeyPress(key) => match key {
                 rdev::Key::KeyQ => {
-                    capture_callback.lock().should_stop = true;
+                    println!("Video recorded");
+
+                    *self.should_stop.lock().unwrap() = true;
                 }
                 _ => {}
             },
@@ -139,6 +61,6 @@ impl VideoRecorder {
     }
 
     pub fn is_finished(&self) -> bool {
-        self.capture.is_finished()
+        *self.should_stop.lock().unwrap()
     }
 }
