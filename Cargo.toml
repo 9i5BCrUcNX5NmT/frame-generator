@@ -1,5 +1,19 @@
+[package]
+name = "ui"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+burn = { workspace = true }
+iced = { version = "0.13.1", features = ["image"] }
+image = "0.25.5"
+model-training = { path = "model-training" }
+recorder = { path = "recorder" }
+preprocessor = { path = "preprocessor" }
+common = { path = "common" }
+
 [workspace]
-members = [ "common","model-training", "preprocessor", "recorder", "ui"]
+members = ["common", "model-training", "preprocessor", "recorder"]
 resolver = "2"
 
 [workspace.dependencies]
