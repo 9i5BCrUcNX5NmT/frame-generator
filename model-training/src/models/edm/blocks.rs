@@ -286,17 +286,53 @@ impl ResBlockConfig {
 }
 
 #[derive(Module, Debug)]
-pub struct UNet<B: Backend> {}
+pub struct ResBlocks<B: Backend> {
+    res_blocks: Vec<ResBlock<B>>,
+}
 
-impl<B: Backend> UNet<B> {
-    pub fn forward(&self, input: Tensor<B, 4>) -> Tensor<B, 4> {}
+impl<B: Backend> ResBlocks<B> {
+    pub fn forward(
+        &self,
+        input: Tensor<B, 4>,
+        cond: Tensor<B, 4>,
+        to_cat: Option<Vec<Tensor<B, 4>>>,
+    ) -> (Tensor<B, 4>, Vec<Tensor<B, 4>>) {
+        let mut x = input;
+        let mut outputs = vec![];
+
+        for (i, res_block) in self.res_blocks.iter().enumerate() {
+            x = if let Some(to_cat) = &to_cat {
+                Tensor::cat(vec![x, to_cat[i].clone()], 1)
+            } else {
+                x
+            };
+
+            x = res_block.forward(x);
+            outputs.push(x.clone());
+        }
+
+        (x, outputs)
+    }
 }
 
 #[derive(Config, Debug)]
-pub struct DownBlockConfig {}
+pub struct ResBlocksConfig {
+    vec_channels: Vec<[usize; 2]>,
+    cond_channels: usize,
+    attn: bool,
+}
 
-impl DownBlockConfig {
-    pub fn init<B: Backend>(&self, device: &B::Device) -> UNet<B> {
-        UNet {}
+impl ResBlocksConfig {
+    pub fn init<B: Backend>(&self, device: &B::Device) -> ResBlocks<B> {
+        ResBlocks {
+            res_blocks: self
+                .vec_channels
+                .iter()
+                .map(|channels| {
+                    ResBlockConfig::new(channels.clone(), self.cond_channels, self.attn)
+                        .init(device)
+                })
+                .collect(),
+        }
     }
 }
