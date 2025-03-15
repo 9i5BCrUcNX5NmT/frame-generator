@@ -4,8 +4,8 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-# burn = { workspace = true }
-burn = { version = "0.16.0" }
+burn = { workspace = true }
+# burn = { version = "0.16.0" }
 iced = { version = "0.13.1", features = ["image"] }
 image = "0.25.5"
 model-training = { path = "model-training" }
@@ -14,9 +14,8 @@ preprocessor = { path = "preprocessor" }
 common = { path = "common" }
 
 [workspace]
-members = ["common", "model-training", "preprocessor", "recorder"]
-# resolver = "2"
-# 
-# [workspace.dependencies]
-# burn = { version = "0.16.0" }
+members = [""]
+# members = ["common", "model-training", "preprocessor", "recorder"]
 
+[workspace.dependencies]
+burn = { version = "0.16.0" }

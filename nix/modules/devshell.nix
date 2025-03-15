@@ -12,6 +12,12 @@
         nixd # Nix language server
         bacon
         config.process-compose.cargo-doc-live.outputs.package
+
+        hdf5
+        dbus
+        xorg.libX11
+        xorg.libXi
+        xorg.libXtst
       ];
     };
   };
