@@ -33,10 +33,10 @@ struct State {
 fn view(state: &State) -> Element<Message> {
     let content = column![
         row![
-            column![
-                text(format!("{}", state.mouse_position.clone())),
-                row![text("Key: "), text(state.pressed_key.clone())],
-            ]
+            column![text(format!("{}", state.mouse_position.clone())), row![
+                text("Key: "),
+                text(state.pressed_key.clone())
+            ],]
             .spacing(10),
             column![
                 text("Status"),

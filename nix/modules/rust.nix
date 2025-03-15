@@ -13,6 +13,13 @@
           IOKit
         ]
       );
+      # ++ [
+      #   pkgs.hdf5          # Добавляем HDF5
+      #   pkgs.dbus          # Добавляем D-Bus
+      #   pkgs.xorg.libX11   # Добавляем libX11
+      #   pkgs.xorg.libXi    # Добавляем libXi
+      #   pkgs.xorg.libXtst  # Добавляем libXtst
+      # ];
     };
 
     packages.default = self'.packages.ui;

@@ -1,5 +1,6 @@
 [package]
 name = "ui"
+description = "My Rust project using Nix"
 version = "0.1.0"
 edition = "2024"
 

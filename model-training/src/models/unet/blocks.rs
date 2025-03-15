@@ -24,10 +24,9 @@ pub struct ConvFusionBlockConfig {
 impl ConvFusionBlockConfig {
     pub fn init<B: Backend>(&self, device: &B::Device) -> ConvFusionBlock<B> {
         ConvFusionBlock {
-            conv1: Conv2dConfig::new(
-                [self.in_channels + self.embed_dim, self.out_channels],
-                [3, 3],
-            )
+            conv1: Conv2dConfig::new([self.in_channels + self.embed_dim, self.out_channels], [
+                3, 3,
+            ])
             .init(device),
             activation1: Relu,
             conv2: Conv2dConfig::new([self.out_channels, self.out_channels], [3, 3]).init(device),
