@@ -7,6 +7,7 @@
     pre-commit.settings = {
       hooks = {
         nixpkgs-fmt.enable = true;
+        cargo-fmt.enable = true;
         rustfmt.enable = false;
       };
     };
