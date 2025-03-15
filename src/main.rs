@@ -18,7 +18,6 @@ enum Message {
     Record,
     FramesProcessing,
     WriteData,
-    CheckData,
 }
 
 #[derive(Default)]

@@ -7,7 +7,7 @@
     pre-commit.settings = {
       hooks = {
         nixpkgs-fmt.enable = true;
-        rustfmt-nightly.enable = true;
+        rustfmt.enable = false; # Отключите rustfmt
       };
     };
   };

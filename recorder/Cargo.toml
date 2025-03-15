@@ -9,4 +9,4 @@ fs_extra = "1.3.0"
 rdev = "0.5.3"
 serde = { version = "1.0.217", features = ["derive"] }
 xcap = "0.4.0"
-common = {path = "../common"}
+common = { path = "../common" }
