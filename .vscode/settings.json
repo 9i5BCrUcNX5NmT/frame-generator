@@ -3,6 +3,9 @@
     "rust-analyzer.files.excludeDirs": [
         ".direnv"
     ],
+    // "rust-analyzer.rustfmt.extraArgs": [
+    //     "+nightly"
+    // ],
     // https://twitter.com/sridca/status/1674947342607216641
     // "editor.inlayHints.enabled": "offUnlessPressed",
 }
