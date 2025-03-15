@@ -1,6 +1,9 @@
 use std::{path::PathBuf, str::FromStr};
 
-use crate::{data::FrameBatcher, models::baseline::model::BaselineConfig};
+use crate::{
+    data::FrameBatcher,
+    models::{baseline::model::BaselineConfig, unet::model::UNetConfig},
+};
 use burn::{
     backend::{self, Autodiff},
     data::{dataloader::DataLoaderBuilder, dataset::InMemDataset},
@@ -17,7 +20,7 @@ use preprocessor::{hdf5_processing::read_all_hdf5_files, types::MyConstData};
 pub(crate) struct TrainingConfig {
     pub model: BaselineConfig,
     pub optimizer: AdamConfig,
-    #[config(default = 20)]
+    #[config(default = 15)]
     pub num_epochs: usize,
     #[config(default = 64)]
     pub batch_size: usize,
@@ -95,10 +98,10 @@ fn train<B: AutodiffBackend>(artifact_dir: &str, config: TrainingConfig, device:
 pub fn run() {
     let artifact_dir = "tmp/test";
 
-    type MyBackend = backend::NdArray<f32>;
-    let device = backend::ndarray::NdArrayDevice::default();
-    // type MyBackend = backend::Wgpu<f32, i32>;
-    // let device = backend::wgpu::WgpuDevice::default();
+    // type MyBackend = backend::NdArray<f32>;
+    // let device = backend::ndarray::NdArrayDevice::default();
+    type MyBackend = backend::Wgpu<f32, i32>;
+    let device = backend::wgpu::WgpuDevice::default();
     // type MyBackend = backend::CudaJit<f32, i32>;
     // let device = backend::cuda_jit::CudaDevice::default();
 

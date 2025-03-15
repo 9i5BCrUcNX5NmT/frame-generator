@@ -65,7 +65,7 @@ impl<B: Backend> FrameBatcher<B> {
             // 1 штука, 4 параметра цвета
             .map(|tensor| tensor.reshape([1, 4, HEIGHT, WIDTH]))
             // Простая нормализация цветов
-            .map(|tensor| tensor.div_scalar(255))
+            .map(|tensor| tensor / 255)
             .collect();
 
         Tensor::cat(images, 0)

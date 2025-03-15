@@ -1,5 +1,6 @@
 use burn::{
     nn::{
+        Relu,
         conv::{Conv2d, Conv2dConfig},
         pool::{AdaptiveAvgPool2d, AdaptiveAvgPool2dConfig},
     },
@@ -18,6 +19,7 @@ pub struct Baseline<B: Backend> {
     keys_embedder: KeyboardEmbedder<B>,
 
     conv: Conv2d<B>,
+    act: Relu,
     out: AdaptiveAvgPool2d,
 }
 
@@ -38,10 +40,12 @@ impl BaselineConfig {
             mouse_embedder: MouseEmbedderConfig::new(self.embed_dim, 16).init(device),
             keys_embedder: KeyboardEmbedderConfig::new(self.embed_dim, 16).init(device),
 
-            conv: Conv2dConfig::new([self.in_channels + self.embed_dim, self.out_channels], [
-                1, 1,
-            ])
+            conv: Conv2dConfig::new(
+                [self.in_channels + self.embed_dim, self.out_channels],
+                [1, 1],
+            )
             .init(device),
+            act: Relu,
             out: AdaptiveAvgPool2dConfig::new([HEIGHT, WIDTH]).init(),
         }
     }
@@ -68,6 +72,7 @@ impl<B: Backend> Baseline<B> {
         let embed_map = embed_map.expand([batch_size, embedding_dim, height, width]); // [embed_dim, height, width]
 
         let x = self.conv.forward(embed_map);
+        let x = self.act.forward(x);
         let x = self.out.forward(x);
 
         x

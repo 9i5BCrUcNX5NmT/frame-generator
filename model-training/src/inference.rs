@@ -36,7 +36,7 @@ fn infer<B: Backend>(
     let images: Vec<MyImage<HEIGHT, WIDTH>> = output
         .iter_dim(0)
         // Возвращение из нормализации
-        .map(|tensor| tensor.mul_scalar(255))
+        .map(|tensor| tensor * 255)
         // Убираем лишнюю размерность
         // .map(|tensor| tensor.reshape([4 * HEIGHT * WIDTH]))
         .map(|tensor| tensor.to_data())
@@ -68,9 +68,10 @@ pub fn generate(
 ) -> DynamicImage {
     let artifact_dir = "tmp/test";
 
-    type MyBackend = backend::CudaJit<f32, i32>;
-    let device = backend::cuda_jit::CudaDevice::default();
-
+    // type MyBackend = backend::CudaJit<f32, i32>;
+    // let device = backend::cuda_jit::CudaDevice::default();
+    type MyBackend = backend::Wgpu<f32, i32>;
+    let device = backend::wgpu::WgpuDevice::default();
     // type MyBackend = backend::NdArray<f32>;
     // let device = backend::ndarray::NdArrayDevice::default();
 
