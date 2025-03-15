@@ -38,10 +38,9 @@ impl BaselineConfig {
             mouse_embedder: MouseEmbedderConfig::new(self.embed_dim, 16).init(device),
             keys_embedder: KeyboardEmbedderConfig::new(self.embed_dim, 16).init(device),
 
-            conv: Conv2dConfig::new(
-                [self.in_channels + self.embed_dim, self.out_channels],
-                [1, 1],
-            )
+            conv: Conv2dConfig::new([self.in_channels + self.embed_dim, self.out_channels], [
+                1, 1,
+            ])
             .init(device),
             out: AdaptiveAvgPool2dConfig::new([HEIGHT, WIDTH]).init(),
         }
