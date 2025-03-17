@@ -2,7 +2,10 @@ use std::{path::PathBuf, str::FromStr};
 
 use crate::{
     data::FrameBatcher,
-    models::{baseline::model::BaselineConfig, unet::model::UNetConfig},
+    models::{
+        baseline_conv::model::BaselineConfig, baseline_diffusion::model::DiffusionConfig,
+        unet::model::UNetConfig,
+    },
 };
 use burn::{
     backend::{self, Autodiff},
@@ -18,7 +21,7 @@ use preprocessor::{hdf5_processing::read_all_hdf5_files, types::MyConstData};
 
 #[derive(Config)]
 pub(crate) struct TrainingConfig {
-    pub model: BaselineConfig,
+    pub model: DiffusionConfig,
     pub optimizer: AdamConfig,
     #[config(default = 15)]
     pub num_epochs: usize,
@@ -100,16 +103,16 @@ pub fn run() {
 
     // type MyBackend = backend::NdArray<f32>;
     // let device = backend::ndarray::NdArrayDevice::default();
-    type MyBackend = backend::Wgpu<f32, i32>;
-    let device = backend::wgpu::WgpuDevice::default();
-    // type MyBackend = backend::CudaJit<f32, i32>;
-    // let device = backend::cuda_jit::CudaDevice::default();
+    // type MyBackend = backend::Wgpu<f32, i32>;
+    // let device = backend::wgpu::WgpuDevice::default();
+    type MyBackend = backend::CudaJit<f32, i32>;
+    let device = backend::cuda_jit::CudaDevice::default();
 
     type MyAutodiffBackend = Autodiff<MyBackend>;
 
     crate::training::train::<MyAutodiffBackend>(
         artifact_dir,
-        TrainingConfig::new(BaselineConfig::new(), AdamConfig::new()),
+        TrainingConfig::new(DiffusionConfig::new(), AdamConfig::new()),
         device.clone(),
     );
 }

@@ -45,36 +45,60 @@ pub struct Denoiser<B: Backend> {
     sigma_offset_noise: f64,
 
     inner_model: InnerModel<B>,
+
+    // SigmaDistributionConfig
+    loc: f64,
+    scale: f64,
+    sigma_min: f64,
+    sigma_max: f64,
 }
 
 impl<B: Backend> Denoiser<B> {
     pub fn forward(&self, batch: EdmBatch<B>) -> Tensor<B, 4> {
-        let n: usize = todo!("");
+        let n: usize = todo!("self.cfg.inner_model.num_steps_conditioning");
         let seq_length = batch.obs.dims()[1] - n;
 
         let all_obs = batch.obs.clone();
-        let mut loss = 0;
+        let mut loss: f64 = 0.0;
 
-        // for i in 0..seq_length {
-        //     let obs = all_obs.slice([None, Some((i, n + i))]);
-        // }
+        for i in 0..seq_length {
+            let obs = all_obs.slice([None, Some((i as i64, (n + i) as i64))]);
+            let next_obs = all_obs.slice([None, Some(((n + i) as i64, (n + i) as i64))]);
 
+            let [_b, t, c, h, w] = next_obs.dims();
+            let next_obs = next_obs.reshape([t, c, h, w]); // b = 1
+
+            let act = batch.act.slice([None, Some((i as i64, (n + i) as i64))]);
+            let mask = batch
+                .mask_padding
+                .slice([None, Some(((n + i) as i64, (n + i) as i64))]);
+
+            let [b, t, c, h, w] = obs.dims();
+            let obs = obs.reshape([b, t * c, h, w]);
+
+            let device = &self.devices()[0];
+
+            let sigma = self.sample_sigma(b, device);
+            let noisy_next_obs = self.apply_noise(next_obs, sigma, self.sigma_offset_noise, device);
+
+            let cs = self.compute_conditioners(sigma);
+            let model_output = self.compute_model_output(noisy_next_obs, obs, act, cs);
+
+            let target = (next_obs - cs.c_skip * noisy_next_obs) / cs.c_out;
+            todo!("loss += mse_loss(model_output[mask], target[mask])");
+
+            let denoised = self.wrap_model_output(noisy_next_obs, model_output, cs);
+            todo!("Обновление all_obs[:, n + i] = denoised")
+        }
+
+        loss /= seq_length as f64;
         todo!()
     }
 
-    fn sample_sigma(
-        &self,
-        n: usize,
-        device: &B::Device,
-        sigma_distribution: Distribution,
-        sigma_distribution_config: SigmaDistributionConfig,
-    ) -> Tensor<B, 1> {
-        let sigma: Tensor<B, 1, Float> = Tensor::random([n], sigma_distribution, device);
-        let sigma = sigma * sigma_distribution_config.scale + sigma_distribution_config.loc;
-        let sigma = sigma.exp().clamp(
-            sigma_distribution_config.sigma_min,
-            sigma_distribution_config.sigma_max,
-        );
+    fn sample_sigma(&self, n: usize, device: &B::Device) -> Tensor<B, 1> {
+        let sigma: Tensor<B, 1, Float> = Tensor::random([n], Distribution::Default, device);
+        let sigma = sigma * self.scale + self.loc;
+        let sigma = sigma.exp().clamp(self.sigma_min, self.sigma_max);
 
         sigma
     }
@@ -170,17 +194,22 @@ impl<B: Backend> Denoiser<B> {
 
 #[derive(Config, Debug)]
 pub struct DenoiserConfig {
+    inner_model: InnerModelConfig,
     sigma_data: f64,
     sigma_offset_noise: f64,
 }
 
 impl DenoiserConfig {
     pub fn init<B: Backend>(&self, device: &B::Device) -> Denoiser<B> {
+        let cfg: SigmaDistributionConfig = todo!();
         Denoiser {
-            inner_model: self.inner_model_config.init(device),
+            inner_model: self.inner_model.init(device),
             sigma_data: self.sigma_data,
             sigma_offset_noise: self.sigma_offset_noise,
-            sigma_distribution: todo!(),
+            loc: cfg.loc,
+            scale: cfg.scale,
+            sigma_min: cfg.sigma_min,
+            sigma_max: cfg.sigma_max,
         }
     }
 
