@@ -115,23 +115,23 @@ impl<const H: usize, const W: usize, const C: usize> MyImage<H, W, C> {
         MyImage { pixels }
     }
 
-    pub fn to_image(&self) -> Rgb32FImage {
-        let mut img = Rgb32FImage::new(W as u32, H as u32);
+    // pub fn to_image(&self) -> Rgb32FImage {
+    //     let mut img = Rgb32FImage::new(W as u32, H as u32);
 
-        for i in 0..H {
-            for j in 0..W {
-                let pixel = Rgb([
-                    self.pixels[0][i][j],
-                    self.pixels[1][i][j],
-                    self.pixels[2][i][j],
-                ]);
+    //     for i in 0..H {
+    //         for j in 0..W {
+    //             let pixel = Rgb([
+    //                 self.pixels[0][i][j],
+    //                 self.pixels[1][i][j],
+    //                 self.pixels[2][i][j],
+    //             ]);
 
-                img.put_pixel(j as u32, i as u32, pixel);
-            }
-        }
+    //             img.put_pixel(j as u32, i as u32, pixel);
+    //         }
+    //     }
 
-        img
-    }
+    //     img
+    // }
 
     // pub fn from_image(image: &DynamicImage) -> Self {
     //     let mut pixels: [[[f32; W]; H]; CHANNELS] = [[[0.0; W]; H]; CHANNELS];

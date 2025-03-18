@@ -7,7 +7,7 @@ use burn::{
     record::{CompactRecorder, Recorder},
 };
 use common::*;
-use image::{DynamicImage, Rgb32FImage, Rgba32FImage, buffer::ConvertBuffer};
+use image::{DynamicImage, Rgb, Rgb32FImage, Rgba32FImage, buffer::ConvertBuffer};
 use preprocessor::{
     csv_processing::{KeysRecordConst, key_to_num},
     images::MyImage,
@@ -41,8 +41,7 @@ fn infer<B: Backend>(
         .map(|tensor| tensor.to_data())
         .map(|data| data.to_vec::<f32>().unwrap())
         .map(|vector| {
-            let buf = vector.chunks(3).map(|()|);
-            let image = Rgba32FImage::from_vec(WIDTH as u32, HEIGHT as u32, vector).unwrap();
+            let image = Rgb32FImage::from_vec(WIDTH as u32, HEIGHT as u32, vector).unwrap();
 
             DynamicImage::from(image)
         })
@@ -60,10 +59,10 @@ pub fn generate(
 ) -> DynamicImage {
     let artifact_dir = "tmp/test";
 
-    // type MyBackend = backend::CudaJit<f32, i32>;
-    // let device = backend::cuda_jit::CudaDevice::default();
-    type MyBackend = backend::Wgpu<f32, i32>;
-    let device = backend::wgpu::WgpuDevice::default();
+    type MyBackend = backend::CudaJit<f32, i32>;
+    let device = backend::cuda_jit::CudaDevice::default();
+    // type MyBackend = backend::Wgpu<f32, i32>;
+    // let device = backend::wgpu::WgpuDevice::default();
     // type MyBackend = backend::NdArray<f32>;
     // let device = backend::ndarray::NdArrayDevice::default();
 
