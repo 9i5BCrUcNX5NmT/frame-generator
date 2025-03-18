@@ -35,11 +35,11 @@ pub struct UNet<B: Backend> {
 
 #[derive(Config, Debug)]
 pub struct UNetConfig {
-    #[config(default = "4")]
+    #[config(default = "3")]
     in_channels: usize,
     #[config(default = "8")]
     base_channels: usize,
-    #[config(default = "4")]
+    #[config(default = "3")]
     out_channels: usize,
     #[config(default = "16")]
     embed_dim: usize,

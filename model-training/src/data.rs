@@ -1,5 +1,5 @@
 use burn::{data::dataloader::batcher::Batcher, prelude::*};
-use common::{HEIGHT, MOUSE_VECTOR_LENGTH, WIDTH};
+use common::{CHANNELS, HEIGHT, MOUSE_VECTOR_LENGTH, WIDTH};
 use preprocessor::types::MyConstData;
 
 #[derive(Clone)]
@@ -62,8 +62,7 @@ impl<B: Backend> FrameBatcher<B> {
             .iter()
             .map(|data| TensorData::from(data.image.pixels).convert::<B::IntElem>())
             .map(|data| Tensor::<B, 3>::from_data(data, &self.device))
-            // 1 штука, 4 параметра цвета
-            .map(|tensor| tensor.reshape([1, 4, HEIGHT, WIDTH]))
+            .map(|tensor| tensor.reshape([1, CHANNELS, HEIGHT, WIDTH]))
             // Простая нормализация цветов
             .map(|tensor| tensor / 255)
             .collect();

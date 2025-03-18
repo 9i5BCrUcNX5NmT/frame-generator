@@ -25,9 +25,9 @@ pub struct Baseline<B: Backend> {
 
 #[derive(Config, Debug)]
 pub struct BaselineConfig {
-    #[config(default = "4")]
+    #[config(default = "3")]
     in_channels: usize,
-    #[config(default = "4")]
+    #[config(default = "3")]
     out_channels: usize,
     #[config(default = "16")]
     embed_dim: usize,

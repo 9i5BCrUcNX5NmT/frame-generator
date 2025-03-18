@@ -38,8 +38,6 @@ fn infer<B: Backend>(
         .iter_dim(0)
         // Возвращение из нормализации
         .map(|tensor| tensor * 255)
-        // Убираем лишнюю размерность
-        // .map(|tensor| tensor.reshape([4 * HEIGHT * WIDTH]))
         .map(|tensor| tensor.to_data())
         .map(|data| data.to_vec::<f32>().unwrap())
         .map(|vector| {

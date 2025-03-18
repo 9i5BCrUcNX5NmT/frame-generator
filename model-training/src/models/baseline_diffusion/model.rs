@@ -28,7 +28,7 @@ pub struct Diffusion<B: Backend> {
 
 #[derive(Config, Debug)]
 pub struct DiffusionConfig {
-    #[config(default = "4")]
+    #[config(default = "3")]
     in_channels: usize,
     #[config(default = "64")]
     out_channels: usize,
