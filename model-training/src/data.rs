@@ -47,7 +47,7 @@ impl<B: Backend> FrameBatcher<B> {
 
                 mouse_vector
             })
-            .map(|vector| TensorData::from(vector).convert::<B::IntElem>())
+            .map(|vector| TensorData::from(vector).convert::<B::FloatElem>())
             .map(|data| Tensor::<B, 2>::from_data(data, &self.device))
             .map(|tensor| tensor.reshape([1, 2, MOUSE_VECTOR_LENGTH]))
             // // Простая нормализация
@@ -60,11 +60,11 @@ impl<B: Backend> FrameBatcher<B> {
     fn extract_const_images(&self, mydata: &Vec<MyConstData>) -> Tensor<B, 4> {
         let images = mydata
             .iter()
-            .map(|data| TensorData::from(data.image.pixels).convert::<B::IntElem>())
+            .map(|data| TensorData::from(data.image.pixels).convert::<B::FloatElem>())
             .map(|data| Tensor::<B, 3>::from_data(data, &self.device))
             .map(|tensor| tensor.reshape([1, CHANNELS, HEIGHT, WIDTH]))
             // Простая нормализация цветов
-            .map(|tensor| tensor / 255)
+            .map(|tensor| tensor / 255.0)
             .collect();
 
         Tensor::cat(images, 0)

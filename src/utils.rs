@@ -328,30 +328,32 @@ pub fn generate_frame(
     mouse: Vec<Point>,
 ) -> image::Handle {
     let current_image = match image_handle {
-        image::Handle::Path(id, path_buf) => open(path_buf).expect("Failed to open image"),
-        image::Handle::Bytes(id, bytes) => todo!(),
-        image::Handle::Rgba {
-            id,
-            width,
-            height,
-            pixels,
-        } => {
-            let mut image = DynamicImage::new_rgba8(*width, *height);
-
-            let mut t = 0;
-
-            for i in 0..*height {
-                for j in 0..*width {
-                    let pixel = Rgba([pixels[t], pixels[t + 1], pixels[t + 2], pixels[t + 3]]);
-
-                    t += 4;
-
-                    image.put_pixel(j, i, pixel);
-                }
-            }
-
-            image
+        image::Handle::Path(id, path_buf) => {
+            open(path_buf).expect("Failed to open image").to_rgb32f()
         }
+        image::Handle::Bytes(id, bytes) => todo!(),
+        // image::Handle::Rgba {
+        //     id,
+        //     width,
+        //     height,
+        //     pixels,
+        // } => {
+        //     let mut image = DynamicImage::new_rgba8(*width, *height);
+
+        //     let mut t = 0;
+
+        //     for i in 0..*height {
+        //         for j in 0..*width {
+        //             let pixel = Rgba([pixels[t], pixels[t + 1], pixels[t + 2], pixels[t + 3]]);
+
+        //             t += 4;
+
+        //             image.put_pixel(j, i, pixel);
+        //         }
+        //     }
+
+        //     image
+        // }
         image::Handle::Rgba {
             id,
             width,
@@ -364,7 +366,11 @@ pub fn generate_frame(
 
             for i in 0..*height {
                 for j in 0..*width {
-                    let pixel = Rgb([pixels[t], pixels[t + 1], pixels[t + 2]]);
+                    let pixel = Rgb([
+                        pixels[t] as f32 / 255.0,
+                        pixels[t + 1] as f32 / 255.0,
+                        pixels[t + 2] as f32 / 255.0,
+                    ]);
 
                     t += 3;
 
