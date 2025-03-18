@@ -66,7 +66,7 @@ impl<B: Backend> Diffusion<B> {
         mouse: Tensor<B, 3>,
     ) -> Tensor<B, 4> {
         // Добавление шума
-        let images = self.add_noise(images, 0.1);
+        let images = self.add_noise(images, 0.7);
 
         // Получаем эмбеддинги
         let mouse_emb = self.mouse_embedder.forward(mouse); // [embed_dim]

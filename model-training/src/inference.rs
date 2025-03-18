@@ -7,7 +7,7 @@ use burn::{
     record::{CompactRecorder, Recorder},
 };
 use common::*;
-use image::DynamicImage;
+use image::{DynamicImage, Rgba32FImage, buffer::ConvertBuffer};
 use preprocessor::{
     csv_processing::{KeysRecordConst, key_to_num},
     images::MyImage,
@@ -33,7 +33,8 @@ fn infer<B: Backend>(
     let batch = batcher.batch(vec![item]);
     let output = model.forward(batch.images, batch.keys, batch.mouse);
 
-    let images: Vec<MyImage<HEIGHT, WIDTH>> = output
+    // let images: Vec<MyImage<HEIGHT, WIDTH>>
+    let dynamic_images = output
         .iter_dim(0)
         // Возвращение из нормализации
         .map(|tensor| tensor * 255)
@@ -42,21 +43,13 @@ fn infer<B: Backend>(
         .map(|tensor| tensor.to_data())
         .map(|data| data.to_vec::<f32>().unwrap())
         .map(|vector| {
-            let mut pixels: [[[u8; WIDTH]; HEIGHT]; 4] = [[[0; WIDTH]; HEIGHT]; 4];
+            let image = Rgba32FImage::from_vec(WIDTH as u32, HEIGHT as u32, vector).unwrap();
 
-            for (color_index, i) in vector.chunks(HEIGHT * WIDTH).enumerate() {
-                for (height, j) in i.chunks(WIDTH).enumerate() {
-                    for (width, k) in j.iter().enumerate() {
-                        pixels[color_index][height][width] = *k as u8;
-                    }
-                }
-            }
-
-            MyImage { pixels }
+            DynamicImage::from(image)
         })
         .collect();
 
-    let dynamic_images = images.iter().map(|image| image.to_image()).collect();
+    // let dynamic_images = images.iter().map(|image| image.to_image()).collect();
 
     dynamic_images
 }
