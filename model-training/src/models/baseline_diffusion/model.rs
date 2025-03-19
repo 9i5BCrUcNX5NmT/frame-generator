@@ -5,6 +5,7 @@ use burn::{
         pool::{AdaptiveAvgPool2d, AdaptiveAvgPool2dConfig},
     },
     prelude::*,
+    tensor::{Distribution, cast::ToElement},
 };
 
 use common::*;
@@ -13,7 +14,10 @@ use crate::models::embedders::{
     KeyboardEmbedder, KeyboardEmbedderConfig, MouseEmbedder, MouseEmbedderConfig,
 };
 
-use super::blocks::LayerBlock;
+use super::blocks::{
+    autoencoder::{Autoencoder, AutoencoderConfig},
+    my::LayerBlock,
+};
 
 #[derive(Module, Debug)]
 pub struct Diffusion<B: Backend> {
@@ -32,6 +36,7 @@ pub struct Diffusion<B: Backend> {
     layer4: LayerBlock<B>,
     fc: nn::Linear<B>,
     tanh: nn::Tanh,
+    autoencoder: Autoencoder<B>,
 }
 
 #[derive(Config, Debug)]
@@ -60,7 +65,6 @@ impl DiffusionConfig {
         Diffusion {
             mouse_embedder: MouseEmbedderConfig::new(self.embed_dim, self.embed_dim).init(device),
             keys_embedder: KeyboardEmbedderConfig::new(self.embed_dim, self.embed_dim).init(device),
-
             layer1,
             layer2,
             layer3,
@@ -78,6 +82,7 @@ impl DiffusionConfig {
             // act2: Relu,
 
             // out: AdaptiveAvgPool2dConfig::new([HEIGHT, WIDTH]).init(),
+            autoencoder: AutoencoderConfig::new().init(device),
         }
     }
 }
@@ -93,17 +98,25 @@ impl<B: Backend> Diffusion<B> {
         let images = self.add_noise(images, 0.7);
 
         // Получаем эмбеддинги
-        let mouse_emb = self.mouse_embedder.forward(mouse); // [embed_dim]
-        let keys_emb = self.keys_embedder.forward(keys); // [embed_dim]
+        let mouse_emb = self.mouse_embedder.forward(mouse); // [b, embed_dim]
+        let keys_emb = self.keys_embedder.forward(keys); // [b, embed_dim]
 
         // здесь для простоты просто суммируем
-        let embed = mouse_emb + keys_emb; // [embed_dim]
+        let embed = mouse_emb + keys_emb; // [b, embed_dim]
 
         let [batch_size, channels, height, width] = images.dims();
         let [_, embedding_dim] = embed.dims();
 
         let embed_map = embed.unsqueeze_dims::<4>(&[2, 3]); // [embed_dim, 1, 1]
         let embed_map = embed_map.expand([batch_size, embedding_dim, height, width]); // [embed_dim, height, width]
+
+        let noise = self.latent_to_image(embed_map);
+        let noise = TensorData::from_bytes(
+            noise.into_iter().flat_map(|x| x).collect(),
+            [batch_size, channels, height, width],
+            burn::tensor::DType::F32,
+        );
+        let noise = Tensor::from_data(noise, &self.devices()[0]);
 
         let x = images.flatten(1, 3);
         let x = self.layer1.forward(x);
@@ -120,12 +133,44 @@ impl<B: Backend> Diffusion<B> {
 
         // let x = self.out.forward(x);
 
-        x.reshape([batch_size, channels, height, width])
+        let x = x.reshape([batch_size, channels, height, width]).add(noise);
+
+        x
     }
 
     fn add_noise(&self, input: Tensor<B, 4>, noise_level: f32) -> Tensor<B, 4> {
         // Добавление шума к входным данным
         let noise = input.random_like(burn::tensor::Distribution::Default);
         input * (1.0 - noise_level) + noise * (noise_level)
+    }
+
+    pub fn latent_to_image(&self, latent: Tensor<B, 4>) -> Vec<Vec<u8>> {
+        let [n_batch, _, _, _] = latent.dims();
+        let image = self.autoencoder.decode_latent(latent * (1.0 / 0.18215));
+
+        let num_elements_per_image = CHANNELS * HEIGHT * WIDTH;
+
+        // correct size and scale and reorder to
+        let image = (image + 1.0) / 2.0;
+        let image = image
+            .reshape([n_batch, CHANNELS, HEIGHT, WIDTH])
+            .swap_dims(1, 2)
+            .swap_dims(2, 3)
+            .mul_scalar(255.0);
+
+        let flattened: Vec<B::FloatElem> = image.into_data().to_vec().unwrap();
+
+        (0..n_batch)
+            .into_iter()
+            .map(|b| {
+                let start = b * num_elements_per_image;
+                let end = start + num_elements_per_image;
+
+                flattened[start..end]
+                    .into_iter()
+                    .map(|v| v.to_f64().min(255.0).max(0.0) as u8)
+                    .collect()
+            })
+            .collect()
     }
 }

@@ -3,21 +3,18 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use common::CHANNELS;
 use hdf5_metno::H5Type;
-use image::{
-    DynamicImage, GenericImageView, Rgb, Rgb32FImage, Rgba, RgbaImage, buffer::ConvertBuffer,
-};
+use image::{DynamicImage, RgbImage};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
 pub struct ImageData {
     image_path: PathBuf,
 }
 
-fn load_image(image_data: &ImageData) -> Rgb32FImage {
+fn load_image(image_data: &ImageData) -> RgbImage {
     image::open(&image_data.image_path)
         .expect("Failed to open image")
-        .to_rgb32f()
+        .to_rgb8()
 }
 
 fn resize_image(image: &DynamicImage, width: u32, height: u32) -> DynamicImage {
@@ -89,7 +86,7 @@ pub fn process_images(
 #[derive(Clone, Copy, H5Type)]
 #[repr(C)]
 pub struct MyImage<const HEIGHT: usize, const WIDTH: usize, const CHANNELS: usize> {
-    pub pixels: [[[f32; WIDTH]; HEIGHT]; CHANNELS],
+    pub pixels: [[[u8; WIDTH]; HEIGHT]; CHANNELS],
 }
 
 impl<const H: usize, const W: usize, const C: usize> fmt::Debug for MyImage<H, W, C> {
@@ -100,8 +97,8 @@ impl<const H: usize, const W: usize, const C: usize> fmt::Debug for MyImage<H, W
 }
 
 impl<const H: usize, const W: usize, const C: usize> MyImage<H, W, C> {
-    pub fn from_image(image: &Rgb32FImage) -> Self {
-        let mut pixels: [[[f32; W]; H]; C] = [[[0.0; W]; H]; C];
+    pub fn from_image(image: &RgbImage) -> Self {
+        let mut pixels: [[[u8; W]; H]; C] = [[[0; W]; H]; C];
 
         for (i, pixel) in image.pixels().enumerate() {
             let height = (i / C / W) % H;
@@ -115,8 +112,8 @@ impl<const H: usize, const W: usize, const C: usize> MyImage<H, W, C> {
         MyImage { pixels }
     }
 
-    // pub fn to_image(&self) -> Rgb32FImage {
-    //     let mut img = Rgb32FImage::new(W as u32, H as u32);
+    // pub fn to_image(&self) -> RgbImage {
+    //     let mut img = RgbImage::new(W as u32, H as u32);
 
     //     for i in 0..H {
     //         for j in 0..W {

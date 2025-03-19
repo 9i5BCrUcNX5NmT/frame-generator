@@ -7,7 +7,7 @@ use burn::{
     record::{CompactRecorder, Recorder},
 };
 use common::*;
-use image::{DynamicImage, Rgb, Rgb32FImage, Rgba32FImage, buffer::ConvertBuffer};
+use image::{DynamicImage, RgbImage};
 use preprocessor::{
     csv_processing::{KeysRecordConst, key_to_num},
     images::MyImage,
@@ -37,11 +37,11 @@ fn infer<B: Backend>(
     let dynamic_images = output
         .iter_dim(0)
         // Возвращение из нормализации
-        .map(|tensor| tensor * 255.0)
+        .map(|tensor| tensor * 255)
         .map(|tensor| tensor.to_data())
-        .map(|data| data.to_vec::<f32>().unwrap())
+        .map(|data| data.to_vec::<u8>().unwrap())
         .map(|vector| {
-            let image = Rgb32FImage::from_vec(WIDTH as u32, HEIGHT as u32, vector).unwrap();
+            let image = RgbImage::from_vec(WIDTH as u32, HEIGHT as u32, vector).unwrap();
 
             DynamicImage::from(image)
         })
@@ -52,11 +52,7 @@ fn infer<B: Backend>(
     dynamic_images
 }
 
-pub fn generate(
-    current_image: &Rgb32FImage,
-    keys: Vec<String>,
-    mouse: Vec<[i32; 2]>,
-) -> DynamicImage {
+pub fn generate(current_image: &RgbImage, keys: Vec<String>, mouse: Vec<[i32; 2]>) -> DynamicImage {
     let artifact_dir = "tmp/test";
 
     type MyBackend = backend::CudaJit<f32, i32>;

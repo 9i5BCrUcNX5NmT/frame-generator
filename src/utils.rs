@@ -1,6 +1,6 @@
 use std::{fs, path::PathBuf, str::FromStr};
 
-use ::image::{DynamicImage, GenericImage, Rgb, Rgb32FImage, Rgba, open};
+use ::image::{DynamicImage, GenericImage, Rgb, RgbImage, Rgba, open};
 use common::*;
 use iced::{Point, widget::image};
 
@@ -329,7 +329,7 @@ pub fn generate_frame(
 ) -> image::Handle {
     let current_image = match image_handle {
         image::Handle::Path(id, path_buf) => {
-            open(path_buf).expect("Failed to open image").to_rgb32f()
+            open(path_buf).expect("Failed to open image").to_rgb8()
         }
         image::Handle::Bytes(id, bytes) => todo!(),
         // image::Handle::Rgba {
@@ -360,17 +360,13 @@ pub fn generate_frame(
             height,
             pixels,
         } => {
-            let mut image = Rgb32FImage::new(*width, *height);
+            let mut image = RgbImage::new(*width, *height);
 
             let mut t = 0;
 
             for i in 0..*height {
                 for j in 0..*width {
-                    let pixel = Rgb([
-                        pixels[t] as f32 / 255.0,
-                        pixels[t + 1] as f32 / 255.0,
-                        pixels[t + 2] as f32 / 255.0,
-                    ]);
+                    let pixel = Rgb([pixels[t], pixels[t + 1], pixels[t + 2]]); // ?
 
                     t += 3;
 
