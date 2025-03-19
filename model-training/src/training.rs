@@ -104,10 +104,10 @@ pub fn run() {
 
     // type MyBackend = backend::NdArray<f32>;
     // let device = backend::ndarray::NdArrayDevice::default();
-    // type MyBackend = backend::Wgpu<f32, i32>;
-    // let device = backend::wgpu::WgpuDevice::default();
-    type MyBackend = backend::CudaJit<f32, i32>;
-    let device = backend::cuda_jit::CudaDevice::default();
+    type MyBackend = backend::Wgpu<f32, i32>;
+    let device = backend::wgpu::WgpuDevice::default();
+    // type MyBackend = backend::CudaJit<f32, i32>;
+    // let device = backend::cuda_jit::CudaDevice::default();
 
     type MyAutodiffBackend = Autodiff<MyBackend>;
 

@@ -2,7 +2,7 @@ use std::thread;
 
 use iced::keyboard::{Key, Modifiers, on_key_press};
 use iced::widget::{button, column, container, image, mouse_area, row, text};
-use iced::{Alignment, Length};
+use iced::{Alignment, Length, Size};
 use iced::{Element, Point, Subscription, Theme};
 use utils::{DataStatus, check_data, generate_frame, key_to_string};
 
@@ -33,10 +33,10 @@ struct State {
 fn view(state: &State) -> Element<Message> {
     let content = column![
         row![
-            column![text(format!("{}", state.mouse_position.clone())), row![
-                text("Key: "),
-                text(state.pressed_key.clone())
-            ],]
+            column![
+                text(format!("{}", state.mouse_position.clone())),
+                row![text("Key: "), text(state.pressed_key.clone())],
+            ]
             .spacing(10),
             column![
                 text("Status"),
@@ -145,6 +145,7 @@ fn theme(_state: &State) -> Theme {
 
 pub fn main() -> iced::Result {
     iced::application("Генерация |>_<|", update, view)
+        .window_size(Size::new(800.0, 600.0))
         .theme(theme)
         .subscription(keyboard_subscription)
         .run()
