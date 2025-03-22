@@ -40,6 +40,7 @@ fn infer<B: Backend>(
         .map(|tensor| tensor * 255)
         .map(|tensor| tensor.to_data())
         .map(|data| data.to_vec::<u8>().unwrap())
+        // .map(|vector| vector.iter().map(|v| *v as u8).collect())
         .map(|vector| {
             let image = RgbImage::from_vec(WIDTH as u32, HEIGHT as u32, vector).unwrap();
 

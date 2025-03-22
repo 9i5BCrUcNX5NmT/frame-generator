@@ -36,7 +36,7 @@ pub struct Diffusion<B: Backend> {
     layer4: LayerBlock<B>,
     fc: nn::Linear<B>,
     tanh: nn::Tanh,
-    autoencoder: Autoencoder<B>,
+    // autoencoder: Autoencoder<B>,
 }
 
 #[derive(Config, Debug)]
@@ -54,11 +54,11 @@ pub struct DiffusionConfig {
 impl DiffusionConfig {
     /// Returns the initialized model.
     pub fn init<B: Backend>(&self, device: &B::Device) -> Diffusion<B> {
-        let layer1 = LayerBlock::new(self.input, 128, device);
+        let layer1 = LayerBlock::new((CHANNELS + self.embed_dim) * WIDTH * HEIGHT, 128, device);
         let layer2 = LayerBlock::new(128, 256, device);
         let layer3 = LayerBlock::new(256, 512, device);
         let layer4 = LayerBlock::new(512, 1024, device);
-        let fc = nn::LinearConfig::new(1024, CHANNELS * HEIGHT * WIDTH)
+        let fc = nn::LinearConfig::new(1024, self.output)
             .with_bias(true)
             .init(device);
 
@@ -82,7 +82,7 @@ impl DiffusionConfig {
             // act2: Relu,
 
             // out: AdaptiveAvgPool2dConfig::new([HEIGHT, WIDTH]).init(),
-            autoencoder: AutoencoderConfig::new().init(device),
+            // autoencoder: AutoencoderConfig::new().init(device),
         }
     }
 }
@@ -95,7 +95,7 @@ impl<B: Backend> Diffusion<B> {
         mouse: Tensor<B, 3>,
     ) -> Tensor<B, 4> {
         // Добавление шума
-        let images = self.add_noise(images, 0.7);
+        let images = self.add_noise(images, 0.3);
 
         // Получаем эмбеддинги
         let mouse_emb = self.mouse_embedder.forward(mouse); // [b, embed_dim]
@@ -119,8 +119,9 @@ impl<B: Backend> Diffusion<B> {
         // let noise = Tensor::from_data(noise, &self.devices()[0]);
 
         // let noise = self.autoencoder.decode_latent(embed_map);
+        let x = Tensor::cat(vec![images, embed_map], 1); // [b, channels + embed_dim, ...]
 
-        let x = images.flatten(1, 3);
+        let x = x.flatten(1, 3);
         let x = self.layer1.forward(x);
         let x = self.layer2.forward(x);
         let x = self.layer3.forward(x);
@@ -146,33 +147,33 @@ impl<B: Backend> Diffusion<B> {
         input * (1.0 - noise_level) + noise * (noise_level)
     }
 
-    pub fn latent_to_image(&self, latent: Tensor<B, 4>) -> Vec<Vec<u8>> {
-        let [n_batch, _, _, _] = latent.dims();
-        let image = self.autoencoder.decode_latent(latent * (1.0 / 0.18215));
+    // pub fn latent_to_image(&self, latent: Tensor<B, 4>) -> Vec<Vec<u8>> {
+    //     let [n_batch, _, _, _] = latent.dims();
+    //     let image = self.autoencoder.decode_latent(latent * (1.0 / 0.18215));
 
-        let num_elements_per_image = CHANNELS * HEIGHT * WIDTH;
+    //     let num_elements_per_image = CHANNELS * HEIGHT * WIDTH;
 
-        // correct size and scale and reorder to
-        let image = (image + 1.0) / 2.0;
-        let image = image
-            .reshape([n_batch, CHANNELS, HEIGHT, WIDTH])
-            .swap_dims(1, 2)
-            .swap_dims(2, 3)
-            .mul_scalar(255.0);
+    //     // correct size and scale and reorder to
+    //     let image = (image + 1.0) / 2.0;
+    //     let image = image
+    //         .reshape([n_batch, CHANNELS, HEIGHT, WIDTH])
+    //         .swap_dims(1, 2)
+    //         .swap_dims(2, 3)
+    //         .mul_scalar(255.0);
 
-        let flattened: Vec<B::FloatElem> = image.into_data().to_vec().unwrap();
+    //     let flattened: Vec<B::FloatElem> = image.into_data().to_vec().unwrap();
 
-        (0..n_batch)
-            .into_iter()
-            .map(|b| {
-                let start = b * num_elements_per_image;
-                let end = start + num_elements_per_image;
+    //     (0..n_batch)
+    //         .into_iter()
+    //         .map(|b| {
+    //             let start = b * num_elements_per_image;
+    //             let end = start + num_elements_per_image;
 
-                flattened[start..end]
-                    .into_iter()
-                    .map(|v| v.to_f64().min(255.0).max(0.0) as u8)
-                    .collect()
-            })
-            .collect()
-    }
+    //             flattened[start..end]
+    //                 .into_iter()
+    //                 .map(|v| v.to_f64().min(255.0).max(0.0) as u8)
+    //                 .collect()
+    //         })
+    //         .collect()
+    // }
 }

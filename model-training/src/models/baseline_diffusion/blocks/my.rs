@@ -1,9 +1,14 @@
 use burn::{
+    config::Config,
     module::Module,
-    nn::{self, BatchNorm},
+    nn::{
+        self, BatchNorm,
+        conv::{Conv2d, Conv2dConfig},
+    },
     prelude::Backend,
     tensor::Tensor,
 };
+use common::{HEIGHT, WIDTH};
 
 /// Layer block of generator model
 #[derive(Module, Debug)]
@@ -33,3 +38,36 @@ impl<B: Backend> LayerBlock<B> {
         self.leakyrelu.forward(output) // output: [Batch, x]
     }
 }
+
+// #[derive(Module, Debug)]
+// pub struct Encoder<B: Backend> {
+//     conv1: Conv2d<B>,
+//     conv2: Conv2d<B>,
+//     batch_norm: BatchNorm<B, 4>,
+// }
+
+// #[derive(Config, Debug)]
+// pub struct EncoderConfig {
+//     in_channels: usize,
+//     out_channels: usize,
+// }
+
+// impl EncoderConfig {
+//     pub fn init<B: Backend>(&self, device: &B::Device) -> Encoder<B> {
+//         Encoder {
+//             conv1: Conv2dConfig::new([HEIGHT / 2, WIDTH], []),
+//             conv2: (),
+//             batch_norm: (),
+//         }
+//     }
+// }
+
+// impl<B: Backend> Encoder<B> {
+//     /// Normal method added to a struct.
+//     pub fn forward(&self, input: Tensor<B, 4>, embed: Tensor<B, 2>) -> Tensor<B, 4> {
+//         let x = self.pool.forward(input.clone());
+//         let x = self.conv.forward(x, embed);
+
+//         x
+//     }
+// }
