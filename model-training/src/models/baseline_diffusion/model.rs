@@ -110,13 +110,15 @@ impl<B: Backend> Diffusion<B> {
         let embed_map = embed.unsqueeze_dims::<4>(&[2, 3]); // [embed_dim, 1, 1]
         let embed_map = embed_map.expand([batch_size, embedding_dim, height, width]); // [embed_dim, height, width]
 
-        let noise = self.latent_to_image(embed_map);
-        let noise = TensorData::from_bytes(
-            noise.into_iter().flat_map(|x| x).collect(),
-            [batch_size, channels, height, width],
-            burn::tensor::DType::F32,
-        );
-        let noise = Tensor::from_data(noise, &self.devices()[0]);
+        // let noise = self.latent_to_image(embed_map);
+        // let noise = TensorData::from_bytes(
+        //     noise.into_iter().flat_map(|x| x).collect(),
+        //     [batch_size, channels, height, width],
+        //     burn::tensor::DType::F32,
+        // );
+        // let noise = Tensor::from_data(noise, &self.devices()[0]);
+
+        // let noise = self.autoencoder.decode_latent(embed_map);
 
         let x = images.flatten(1, 3);
         let x = self.layer1.forward(x);
@@ -133,7 +135,7 @@ impl<B: Backend> Diffusion<B> {
 
         // let x = self.out.forward(x);
 
-        let x = x.reshape([batch_size, channels, height, width]).add(noise);
+        let x = x.reshape([batch_size, channels, height, width]); // .add(noise)
 
         x
     }

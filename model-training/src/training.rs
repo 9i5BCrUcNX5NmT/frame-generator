@@ -102,10 +102,10 @@ fn train<B: AutodiffBackend>(artifact_dir: &str, config: TrainingConfig, device:
 pub fn run() {
     let artifact_dir = "tmp/test";
 
-    // type MyBackend = backend::NdArray<f32>;
-    // let device = backend::ndarray::NdArrayDevice::default();
-    type MyBackend = backend::Wgpu<f32, i32>;
-    let device = backend::wgpu::WgpuDevice::default();
+    type MyBackend = backend::NdArray<f32>;
+    let device = backend::ndarray::NdArrayDevice::default();
+    // type MyBackend = backend::Wgpu<f32, i32>;
+    // let device = backend::wgpu::WgpuDevice::default();
     // type MyBackend = backend::CudaJit<f32, i32>;
     // let device = backend::cuda_jit::CudaDevice::default();
 
