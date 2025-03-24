@@ -49,6 +49,11 @@ pub struct DiffusionConfig {
     output: usize,
     #[config(default = "16")]
     embed_dim: usize,
+    // /// Dimensionality of the latent space
+    // #[config(default = 100)]
+    // pub latent_dim: usize,
+    #[config(default = 10)]
+    pub num_timestamps: usize,
 }
 
 impl DiffusionConfig {
@@ -94,9 +99,6 @@ impl<B: Backend> Diffusion<B> {
         keys: Tensor<B, 2>,
         mouse: Tensor<B, 3>,
     ) -> Tensor<B, 4> {
-        // Добавление шума
-        let images = self.add_noise(images, 0.3);
-
         // Получаем эмбеддинги
         let mouse_emb = self.mouse_embedder.forward(mouse); // [b, embed_dim]
         let keys_emb = self.keys_embedder.forward(keys); // [b, embed_dim]
@@ -136,15 +138,9 @@ impl<B: Backend> Diffusion<B> {
 
         // let x = self.out.forward(x);
 
-        let x = x.reshape([batch_size, channels, height, width]); // .add(noise)
+        let x = x.reshape([batch_size, channels, height, width]);
 
         x
-    }
-
-    fn add_noise(&self, input: Tensor<B, 4>, noise_level: f32) -> Tensor<B, 4> {
-        // Добавление шума к входным данным
-        let noise = input.random_like(burn::tensor::Distribution::Default);
-        input * (1.0 - noise_level) + noise * (noise_level)
     }
 
     // pub fn latent_to_image(&self, latent: Tensor<B, 4>) -> Vec<Vec<u8>> {
