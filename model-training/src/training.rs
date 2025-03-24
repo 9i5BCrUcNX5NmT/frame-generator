@@ -86,7 +86,7 @@ fn train<B: AutodiffBackend>(artifact_dir: &str, config: TrainingConfig, device:
     let mut optimizer = config.optimizer.init();
 
     // Iterate over our training for X epochs
-    for _epoch in 0..config.num_epochs {
+    for epoch in 0..config.num_epochs {
         // Implement our training loop
         for batch in dataloader_train.iter() {
             // // Generate a batch of fake images from noise (standarded normal distribution)
@@ -122,7 +122,11 @@ fn train<B: AutodiffBackend>(artifact_dir: &str, config: TrainingConfig, device:
             let grads = loss.backward();
             let grads = GradientsParams::from_grads(grads, &model);
             model = optimizer.step(config.learning_rate, model, grads);
+
+            println!("Loss: {}", loss.to_data().to_vec::<f32>().unwrap()[0]);
         }
+
+        println!("\nEpoch: {}\n", epoch);
     }
 
     // let learner = LearnerBuilder::new(artifact_dir)
