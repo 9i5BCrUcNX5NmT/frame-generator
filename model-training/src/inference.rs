@@ -39,8 +39,8 @@ fn infer<B: Backend>(
         // Возвращение из нормализации
         .map(|tensor| tensor * 255)
         .map(|tensor| tensor.to_data())
-        .map(|data| data.to_vec::<u8>().unwrap())
-        // .map(|vector| vector.iter().map(|v| *v as u8).collect())
+        .map(|data| data.to_vec::<f32>().unwrap())
+        .map(|vector| vector.iter().map(|v| *v as u8).collect())
         .map(|vector| {
             let image = RgbImage::from_vec(WIDTH as u32, HEIGHT as u32, vector).unwrap();
 
@@ -49,7 +49,6 @@ fn infer<B: Backend>(
         .collect();
 
     // let dynamic_images = images.iter().map(|image| image.to_image()).collect();
-
     dynamic_images
 }
 
@@ -58,10 +57,10 @@ pub fn generate(current_image: &RgbImage, keys: Vec<String>, mouse: Vec<[i32; 2]
 
     // type MyBackend = backend::CudaJit<f32, i32>;
     // let device = backend::cuda_jit::CudaDevice::default();
-    // type MyBackend = backend::Wgpu<f32, i32>;
-    // let device = backend::wgpu::WgpuDevice::default();
-    type MyBackend = backend::NdArray<f32>;
-    let device = backend::ndarray::NdArrayDevice::default();
+    type MyBackend = backend::Wgpu<f32, i32>;
+    let device = backend::wgpu::WgpuDevice::default();
+    // type MyBackend = backend::NdArray<f32>;
+    // let device = backend::ndarray::NdArrayDevice::default();
 
     let my_image = MyImage::from_image(current_image);
 

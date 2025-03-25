@@ -331,7 +331,9 @@ pub fn generate_frame(
         image::Handle::Path(id, path_buf) => {
             open(path_buf).expect("Failed to open image").to_rgb8()
         }
-        image::Handle::Bytes(id, bytes) => todo!(),
+        image::Handle::Bytes(id, bytes) => {
+            RgbImage::from_raw(WIDTH as u32, HEIGHT as u32, bytes.to_vec()).unwrap()
+        }
         // image::Handle::Rgba {
         //     id,
         //     width,
@@ -385,7 +387,7 @@ pub fn generate_frame(
 
     let image = model_training::inference::generate(&current_image, keys, mouse);
 
-    image::Handle::from_rgba(WIDTH as u32, HEIGHT as u32, image.into_bytes())
+    image::Handle::from_bytes(image.into_bytes())
 }
 
 #[derive(Default)]
