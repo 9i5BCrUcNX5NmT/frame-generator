@@ -1,3 +1,5 @@
+use std::{path::PathBuf, str::FromStr};
+
 use burn::{
     backend,
     config::Config,
@@ -10,17 +12,13 @@ use common::*;
 use image::{DynamicImage, RgbImage};
 use preprocessor::{
     csv_processing::{KeysRecordConst, key_to_num},
-    images::MyImage,
+    images::{MyImage, save_image},
     types::MyConstData,
 };
 
 use crate::{data::FrameBatcher, training::TrainingConfig};
 
-fn infer<B: Backend>(
-    artifact_dir: &str,
-    device: B::Device,
-    item: MyConstData,
-) -> Vec<DynamicImage> {
+fn infer<B: Backend>(artifact_dir: &str, device: B::Device, item: MyConstData) -> Vec<RgbImage> {
     let config = TrainingConfig::load(format!("{artifact_dir}/config.json"))
         .expect("Config should exist for the model");
     let record = CompactRecorder::new()
@@ -34,7 +32,7 @@ fn infer<B: Backend>(
     let output = model.forward(batch.images, batch.keys, batch.mouse);
 
     // let images: Vec<MyImage<HEIGHT, WIDTH>>
-    let dynamic_images = output
+    let images = output
         .iter_dim(0)
         // Возвращение из нормализации
         .map(|tensor| tensor * 255)
@@ -42,17 +40,19 @@ fn infer<B: Backend>(
         .map(|data| data.to_vec::<f32>().unwrap())
         .map(|vector| vector.iter().map(|v| *v as u8).collect())
         .map(|vector| {
-            let image = RgbImage::from_vec(WIDTH as u32, HEIGHT as u32, vector).unwrap();
+            // let image = RgbImage::from_vec(WIDTH as u32, HEIGHT as u32, vector).unwrap();
 
-            DynamicImage::from(image)
+            // DynamicImage::from(image)
+            RgbImage::from_vec(WIDTH as u32, HEIGHT as u32, vector).unwrap()
         })
         .collect();
 
     // let dynamic_images = images.iter().map(|image| image.to_image()).collect();
-    dynamic_images
+    // dynamic_images
+    images
 }
 
-pub fn generate(current_image: &RgbImage, keys: Vec<String>, mouse: Vec<[i32; 2]>) -> DynamicImage {
+pub fn generate(current_image: &RgbImage, keys: Vec<String>, mouse: Vec<[i32; 2]>) -> RgbImage {
     let artifact_dir = "tmp/test";
 
     // type MyBackend = backend::CudaJit<f32, i32>;

@@ -140,7 +140,7 @@ fn update(state: &mut State, message: Message) {
 }
 
 fn theme(_state: &State) -> Theme {
-    Theme::Moonfly
+    Theme::CatppuccinLatte
 }
 
 pub fn main() -> iced::Result {

@@ -21,7 +21,7 @@ fn resize_image(image: &DynamicImage, width: u32, height: u32) -> DynamicImage {
     image.resize_exact(width, height, image::imageops::FilterType::Lanczos3)
 }
 
-pub fn save_image(image: &DynamicImage, output_path: &Path) {
+pub fn save_image(image: &DynamicImage, output_path: &PathBuf) {
     image.save(output_path).expect("Failed to save image");
 }
 

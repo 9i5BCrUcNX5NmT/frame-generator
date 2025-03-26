@@ -1,8 +1,11 @@
 use std::{fs, path::PathBuf, str::FromStr};
 
-use ::image::{DynamicImage, GenericImage, Rgb, RgbImage, Rgba, open};
+use ::image::{
+    DynamicImage, EncodableLayout, GenericImage, GenericImageView, Rgb, RgbImage, Rgba, open,
+};
 use common::*;
 use iced::{Point, widget::image};
+use preprocessor::images::save_image;
 
 use crate::State;
 
@@ -380,14 +383,39 @@ pub fn generate_frame(
         }
     };
 
+    // let dimage = DynamicImage::from(current_image.clone());
+    // save_image(&dimage, &PathBuf::from_str("tmp/image.png").unwrap());
+
     let mouse = mouse
         .iter()
         .map(|p| [(p.x * 2.0) as i32, (p.y * 2.0) as i32]) // 0.0, 0.5, 1.0, 1.5 ... => 0, 1, 2, 3 ...
         .collect();
 
-    let image = model_training::inference::generate(&current_image, keys, mouse);
+    let image: RgbImage = model_training::inference::generate(&current_image, keys, mouse);
 
-    image::Handle::from_bytes(image.into_bytes())
+    // let pixels: Vec<(u32, u32, Rgba<u8>)> = image
+    //     .pixels()
+    //     .map(|(h, w, pixel)| {
+    //         (
+    //             h,
+    //             w,
+    //             Rgba {
+    //                 0: [pixel.0[0], pixel.0[1], pixel.0[2], 255],
+    //             },
+    //         )
+    //     })
+    //     .collect();
+
+    // save_image(
+    //     &DynamicImage::from(image.clone()),
+    //     &PathBuf::from_str("tmp/image.png").unwrap(),
+    // );
+
+    image::Handle::from_rgba(image.width(), image.height(), image.into_vec())
+
+    // image::Handle::from_bytes(image.into_byte_slice())
+
+    // image::Handle::from_path("tmp/image.png")
 }
 
 #[derive(Default)]

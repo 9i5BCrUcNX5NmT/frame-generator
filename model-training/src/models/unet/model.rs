@@ -43,6 +43,8 @@ pub struct UNetConfig {
     out_channels: usize,
     #[config(default = "16")]
     embed_dim: usize,
+    #[config(default = 10)]
+    pub num_timestamps: usize,
 }
 
 impl UNetConfig {
