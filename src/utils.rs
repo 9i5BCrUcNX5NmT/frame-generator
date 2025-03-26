@@ -1,7 +1,7 @@
 use std::{fs, path::PathBuf, str::FromStr};
 
 use ::image::{
-    DynamicImage, EncodableLayout, GenericImage, GenericImageView, Rgb, RgbImage, Rgba, open,
+    DynamicImage, EncodableLayout, GenericImage, GenericImageView, Rgb, Rgba, RgbaImage, open,
 };
 use common::*;
 use iced::{Point, widget::image};
@@ -332,10 +332,10 @@ pub fn generate_frame(
 ) -> image::Handle {
     let current_image = match image_handle {
         image::Handle::Path(id, path_buf) => {
-            open(path_buf).expect("Failed to open image").to_rgb8()
+            open(path_buf).expect("Failed to open image").to_rgba8()
         }
         image::Handle::Bytes(id, bytes) => {
-            RgbImage::from_raw(WIDTH as u32, HEIGHT as u32, bytes.to_vec()).unwrap()
+            RgbaImage::from_raw(WIDTH as u32, HEIGHT as u32, bytes.to_vec()).unwrap()
         }
         // image::Handle::Rgba {
         //     id,
@@ -365,15 +365,15 @@ pub fn generate_frame(
             height,
             pixels,
         } => {
-            let mut image = RgbImage::new(*width, *height);
+            let mut image = RgbaImage::new(*width, *height);
 
             let mut t = 0;
 
             for i in 0..*height {
                 for j in 0..*width {
-                    let pixel = Rgb([pixels[t], pixels[t + 1], pixels[t + 2]]); // ?
+                    let pixel = Rgba([pixels[t], pixels[t + 1], pixels[t + 2], pixels[t + 3]]); // ?
 
-                    t += 3;
+                    t += 4;
 
                     image.put_pixel(j, i, pixel);
                 }
@@ -391,7 +391,8 @@ pub fn generate_frame(
         .map(|p| [(p.x * 2.0) as i32, (p.y * 2.0) as i32]) // 0.0, 0.5, 1.0, 1.5 ... => 0, 1, 2, 3 ...
         .collect();
 
-    let image: RgbImage = model_training::inference::generate(&current_image, keys, mouse);
+    let image: RgbaImage =
+        model_training::inference::generate(&current_image, keys, mouse).to_rgba8();
 
     // let pixels: Vec<(u32, u32, Rgba<u8>)> = image
     //     .pixels()

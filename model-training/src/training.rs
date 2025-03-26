@@ -180,7 +180,7 @@ pub fn run() {
 
     crate::training::train::<MyAutodiffBackend>(
         artifact_dir,
-        TrainingConfig::new(UNetConfig::new(), AdamConfig::new()),
+        TrainingConfig::new(UNetConfig::new(CHANNELS, CHANNELS), AdamConfig::new()),
         device.clone(),
     );
 }

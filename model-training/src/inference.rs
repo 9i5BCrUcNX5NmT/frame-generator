@@ -9,7 +9,7 @@ use burn::{
     record::{CompactRecorder, Recorder},
 };
 use common::*;
-use image::{DynamicImage, RgbImage};
+use image::{DynamicImage, RgbaImage};
 use preprocessor::{
     csv_processing::{KeysRecordConst, key_to_num},
     images::{MyImage, save_image},
@@ -18,7 +18,11 @@ use preprocessor::{
 
 use crate::{data::FrameBatcher, training::TrainingConfig};
 
-fn infer<B: Backend>(artifact_dir: &str, device: B::Device, item: MyConstData) -> Vec<RgbImage> {
+fn infer<B: Backend>(
+    artifact_dir: &str,
+    device: B::Device,
+    item: MyConstData,
+) -> Vec<DynamicImage> {
     let config = TrainingConfig::load(format!("{artifact_dir}/config.json"))
         .expect("Config should exist for the model");
     let record = CompactRecorder::new()
@@ -40,10 +44,10 @@ fn infer<B: Backend>(artifact_dir: &str, device: B::Device, item: MyConstData) -
         .map(|data| data.to_vec::<f32>().unwrap())
         .map(|vector| vector.iter().map(|v| *v as u8).collect())
         .map(|vector| {
-            // let image = RgbImage::from_vec(WIDTH as u32, HEIGHT as u32, vector).unwrap();
+            let image = RgbaImage::from_vec(WIDTH as u32, HEIGHT as u32, vector).unwrap();
 
-            // DynamicImage::from(image)
-            RgbImage::from_vec(WIDTH as u32, HEIGHT as u32, vector).unwrap()
+            DynamicImage::from(image)
+            // RgbaImage::from_vec(WIDTH as u32, HEIGHT as u32, vector).unwrap()
         })
         .collect();
 
@@ -52,7 +56,11 @@ fn infer<B: Backend>(artifact_dir: &str, device: B::Device, item: MyConstData) -
     images
 }
 
-pub fn generate(current_image: &RgbImage, keys: Vec<String>, mouse: Vec<[i32; 2]>) -> RgbImage {
+pub fn generate(
+    current_image: &RgbaImage,
+    keys: Vec<String>,
+    mouse: Vec<[i32; 2]>,
+) -> DynamicImage {
     let artifact_dir = "tmp/test";
 
     // type MyBackend = backend::CudaJit<f32, i32>;

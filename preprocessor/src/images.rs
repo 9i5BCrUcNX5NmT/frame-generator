@@ -4,17 +4,17 @@ use std::{
 };
 
 use hdf5_metno::H5Type;
-use image::{DynamicImage, RgbImage};
+use image::{DynamicImage, RgbaImage};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
 pub struct ImageData {
     image_path: PathBuf,
 }
 
-fn load_image(image_data: &ImageData) -> RgbImage {
+fn load_image(image_data: &ImageData) -> RgbaImage {
     image::open(&image_data.image_path)
         .expect("Failed to open image")
-        .to_rgb8()
+        .to_rgba8()
 }
 
 fn resize_image(image: &DynamicImage, width: u32, height: u32) -> DynamicImage {
@@ -97,7 +97,7 @@ impl<const H: usize, const W: usize, const C: usize> fmt::Debug for MyImage<H, W
 }
 
 impl<const H: usize, const W: usize, const C: usize> MyImage<H, W, C> {
-    pub fn from_image(image: &RgbImage) -> Self {
+    pub fn from_image(image: &RgbaImage) -> Self {
         let mut pixels: [[[u8; W]; H]; C] = [[[0; W]; H]; C];
 
         for (i, pixel) in image.pixels().enumerate() {
@@ -112,8 +112,8 @@ impl<const H: usize, const W: usize, const C: usize> MyImage<H, W, C> {
         MyImage { pixels }
     }
 
-    // pub fn to_image(&self) -> RgbImage {
-    //     let mut img = RgbImage::new(W as u32, H as u32);
+    // pub fn to_image(&self) -> RgbaImage {
+    //     let mut img = RgbaImage::new(W as u32, H as u32);
 
     //     for i in 0..H {
     //         for j in 0..W {
