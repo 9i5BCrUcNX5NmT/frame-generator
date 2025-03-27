@@ -97,27 +97,24 @@ fn train<B: AutodiffBackend>(artifact_dir: &str, config: TrainingConfig, device:
             // );
             // datach: do not update gerenator, only discriminator is updated
 
-            let mut loss: Tensor<B, 1, Float> = Tensor::zeros([1], &device);
+            let random_timestamp = rand::random_range(1..=config.model.num_timestamps);
+
+            let mut noised_images = batch.images.clone();
 
             // base diffusion train
             // TODO: upgrade to one step train
-            for timestamp in 0..config.model.num_timestamps {
-                let noise_level = timestamp as f32 / config.model.num_timestamps as f32;
-                let noised_images: Tensor<B, 4> = add_noise(batch.images.clone(), noise_level); // TODO: Пока не знаю, как лучше
-                let model_predict = model.forward(
-                    noised_images.clone(),
-                    batch.keys.clone(),
-                    batch.mouse.clone(),
-                );
-
-                loss = loss.add(MseLoss::new().forward(
-                    model_predict,
-                    batch.targets.clone(),
-                    Reduction::Mean,
-                )); // TODO: Mean or Sum?
+            for _timestamp in 0..random_timestamp {
+                noised_images = add_noise(noised_images, 1.0 / config.model.num_timestamps as f32); // TODO: Пока не знаю, как лучше
             }
 
-            loss = loss.div_scalar(config.model.num_timestamps as f32);
+            let model_predict = model.forward(
+                noised_images.clone(),
+                batch.keys.clone(),
+                batch.mouse.clone(),
+            );
+
+            let loss =
+                MseLoss::new().forward(model_predict, batch.targets.clone(), Reduction::Auto); // TODO: Mean or Sum?
 
             // println!("Loss: {}", loss.to_data().to_vec::<f32>().unwrap()[0]);
             println!(

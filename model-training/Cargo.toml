@@ -10,3 +10,4 @@ image = "0.25.5"
 serde = { version = "1.0.216", features = ["derive"] }
 common = { path = "../common" }
 preprocessor = { path = "../preprocessor" }
+rand = "0.9.0"
