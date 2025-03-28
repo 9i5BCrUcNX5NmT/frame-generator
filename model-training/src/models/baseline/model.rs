@@ -4,16 +4,21 @@ use common::*;
 
 use crate::models::embedders::{
     KeyboardEmbedder, KeyboardEmbedderConfig, MouseEmbedder, MouseEmbedderConfig,
+    TimestempEmbedder, TimestempEmbedderConfig,
 };
 
-use super::blocks::my::LayerBlock;
+use super::blocks::{
+    my::LayerBlock,
+    unet::{UNet, UNetConfig},
+};
 
 // TODO: Разделить модель диффузии и её саму
 
 #[derive(Module, Debug)]
-pub struct Diffusion<B: Backend> {
+pub struct Baseline<B: Backend> {
     mouse_embedder: MouseEmbedder<B>,
     keys_embedder: KeyboardEmbedder<B>,
+    timestep_embedder: TimestempEmbedder<B>,
 
     layer1: LayerBlock<B>,
     layer2: LayerBlock<B>,
@@ -21,19 +26,24 @@ pub struct Diffusion<B: Backend> {
     layer4: LayerBlock<B>,
     fc: nn::Linear<B>,
     tanh: nn::Tanh,
+    // unet: UNet<B>,
 }
 
 #[derive(Config, Debug)]
-pub struct DiffusionConfig {
+pub struct BaselineConfig {
     #[config(default = "16")]
     embed_dim: usize,
     #[config(default = 10)]
     pub num_timestamps: usize,
 }
 
-impl DiffusionConfig {
-    pub fn init<B: Backend>(&self, device: &B::Device) -> Diffusion<B> {
-        let layer1 = LayerBlock::new((CHANNELS + self.embed_dim) * WIDTH * HEIGHT, 128, device);
+impl BaselineConfig {
+    pub fn init<B: Backend>(&self, device: &B::Device) -> Baseline<B> {
+        let layer1 = LayerBlock::new(
+            (CHANNELS + self.embed_dim * 3) * WIDTH * HEIGHT,
+            128,
+            device,
+        );
         let layer2 = LayerBlock::new(128, 256, device);
         let layer3 = LayerBlock::new(256, 512, device);
         let layer4 = LayerBlock::new(512, 1024, device);
@@ -41,35 +51,53 @@ impl DiffusionConfig {
             .with_bias(true)
             .init(device);
 
-        Diffusion {
+        Baseline {
             mouse_embedder: MouseEmbedderConfig::new(self.embed_dim, self.embed_dim).init(device),
             keys_embedder: KeyboardEmbedderConfig::new(self.embed_dim, self.embed_dim).init(device),
+            timestep_embedder: TimestempEmbedderConfig::new(self.embed_dim, self.embed_dim)
+                .init(device),
             layer1,
             layer2,
             layer3,
             layer4,
             fc,
             tanh: nn::Tanh,
+            // unet: UNetConfig::new().init(device),
         }
     }
 }
 
-impl<B: Backend> Diffusion<B> {
+impl<B: Backend> Baseline<B> {
     pub fn forward(
         &self,
         images: Tensor<B, 4>,
         keys: Tensor<B, 2>,
         mouse: Tensor<B, 3>,
+        timesteps: Tensor<B, 1>,
     ) -> Tensor<B, 4> {
         // Получаем эмбеддинги
         let mouse_emb = self.mouse_embedder.forward(mouse); // [b, embed_dim]
         let keys_emb = self.keys_embedder.forward(keys); // [b, embed_dim]
+        let timesteps_emb = self.timestep_embedder.forward(timesteps); // [b, embed_dim]
 
         // здесь для простоты просто суммируем
-        let embed = mouse_emb + keys_emb; // [b, embed_dim]
+        // let embed = mouse_emb + keys_emb; // [b, embed_dim]
+        let embed: Tensor<B, 3> = Tensor::cat(
+            vec![
+                mouse_emb.unsqueeze_dim(1),
+                keys_emb.unsqueeze_dim(1),
+                timesteps_emb.unsqueeze_dim(1),
+            ],
+            2,
+        ); // [b, 3, embed_dim]
+        let embed: Tensor<B, 2> = embed.flatten(1, 2); // [b, embed_dim * 3]
 
         let [batch_size, channels, height, width] = images.dims();
         let [_, embedding_dim] = embed.dims();
+
+        // let embed_map = embed.unsqueeze_dim::<3>(2); // [embed_dim, 1, 1]
+
+        // let x = self.unet.forward(images, timesteps, embed_map);
 
         let embed_map = embed.unsqueeze_dims::<4>(&[2, 3]); // [embed_dim, 1, 1]
         let embed_map = embed_map.expand([batch_size, embedding_dim, height, width]); // [embed_dim, height, width]

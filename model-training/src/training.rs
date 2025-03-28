@@ -2,7 +2,7 @@ use std::{path::PathBuf, str::FromStr};
 
 use crate::{
     data::FrameBatcher,
-    models::{baseline_diffusion::model::DiffusionConfig, unet::model::UNetConfig},
+    models::{baseline::model::BaselineConfig, unet::model::UNetConfig},
 };
 use burn::{
     backend::{self, Autodiff},
@@ -11,14 +11,14 @@ use burn::{
     optim::{AdamConfig, GradientsParams, Optimizer},
     prelude::*,
     record::CompactRecorder,
-    tensor::{backend::AutodiffBackend, cast::ToElement},
+    tensor::{activation::sigmoid, backend::AutodiffBackend},
 };
 
 use preprocessor::{hdf5_processing::read_all_hdf5_files, types::MyConstData};
 
 #[derive(Config)]
 pub(crate) struct TrainingConfig {
-    pub model: UNetConfig,
+    pub model: BaselineConfig,
     pub optimizer: AdamConfig,
     #[config(default = 15)]
     pub num_epochs: usize,
@@ -80,32 +80,39 @@ fn train<B: AutodiffBackend>(artifact_dir: &str, config: TrainingConfig, device:
 
     let mut optimizer = config.optimizer.init();
 
-    // Iterate over our training for X epochs
     for epoch in 1..config.num_epochs + 1 {
-        // Implement our training loop
         for (iteration, batch) in dataloader_train.iter().enumerate() {
-            // // Generate a batch of fake images from noise (standarded normal distribution)
-            // let noise = Tensor::<B, 4>::random(
-            //     [config.batch_size, config.model.latent_dim],
-            //     Distribution::Normal(0.0, 1.0),
-            //     &device,
-            // );
-            // datach: do not update gerenator, only discriminator is updated
-
-            let mut noised_images = batch.images.clone();
-
             // base diffusion train
-            // TODO: нормально вычисление шума
-            noised_images = add_random_noise(noised_images, &device); // TODO: Пока не знаю, как лучше
+            let random_timestamps = Tensor::<B, 1>::random(
+                [batch.images.dims()[0]],
+                burn::tensor::Distribution::Normal(0.0, 1.0),
+                &device,
+            );
 
-            let model_predict = model.forward(
+            let alpha_timestamps = sigmoid(random_timestamps.clone())
+                .sqrt()
+                .reshape([-1, 1, 1, 1]);
+            let sigma_timestamps = sigmoid(-random_timestamps.clone())
+                .sqrt()
+                .reshape([-1, 1, 1, 1]);
+
+            let noise = batch
+                .images
+                .random_like(burn::tensor::Distribution::Default);
+            let noised_images = batch.images * alpha_timestamps + noise.clone() * sigma_timestamps;
+            // let noised_images = diffuse(batch.images.clone(), alpha_timestamps, sigma_timestamps);
+
+            let predict = model.forward(
                 noised_images.clone(),
                 batch.keys.clone(),
                 batch.mouse.clone(),
+                random_timestamps.clone(),
             );
 
-            let loss =
-                MseLoss::new().forward(model_predict, batch.targets.clone(), Reduction::Auto); // TODO: Mean or Sum?
+            // let snr = random_timestamps.exp().clamp_max(5);
+            // let weight = snr.recip().reshape([-1, 1, 1, 1]);
+
+            let loss = MseLoss::new().forward(predict, noise, Reduction::Auto); // TODO: Mean or Sum?
 
             println!(
                 "[Train - Epoch {} - Iteration {}] Loss {:.3}",
@@ -128,27 +135,16 @@ fn train<B: AutodiffBackend>(artifact_dir: &str, config: TrainingConfig, device:
     println!("Model is save");
 }
 
-fn add_random_noise<B: AutodiffBackend>(input: Tensor<B, 4>, device: &B::Device) -> Tensor<B, 4> {
-    // Добавление шума к входным данным
-    let noise = input.random_like(burn::tensor::Distribution::Normal(0.0, 1.0));
-    let noise_level =
-        Tensor::<B, 1>::random([1], burn::tensor::Distribution::Normal(0.0, 1.0), device)
-            .into_scalar()
-            .to_f32();
-
-    input * (1.0 - noise_level) + noise * (noise_level)
-}
-
 // /// Зашумление
 // pub fn diffuse<B: AutodiffBackend>(
 //     input: Tensor<B, 4>,
 //     // The alpha value at timepoint t
-//     alpha_t: f32,
+//     alpha_t: Tensor<B, 4>,
 //     // The sigma value at timepoint t
-//     sigma_t: f32,
+//     sigma_t: Tensor<B, 4>,
 // ) -> Tensor<B, 4> {
-//     let eps_t = input.random_like(burn::tensor::Distribution::Default);
-//     let diffused_input = input * alpha_t + eps_t * sigma_t;
+//     let noise = input.random_like(burn::tensor::Distribution::Default);
+//     let diffused_input = input * alpha_t + noise * sigma_t;
 
 //     diffused_input
 // }
@@ -167,7 +163,7 @@ pub fn run() {
 
     crate::training::train::<MyAutodiffBackend>(
         artifact_dir,
-        TrainingConfig::new(UNetConfig::new(), AdamConfig::new()),
+        TrainingConfig::new(BaselineConfig::new(), AdamConfig::new()),
         device.clone(),
     );
 }

@@ -7,6 +7,7 @@ use burn::{
     module::Module,
     prelude::Backend,
     record::{CompactRecorder, Recorder},
+    tensor::{Data, Float, Tensor, TensorData},
 };
 use common::*;
 use image::{DynamicImage, RgbaImage};
@@ -31,9 +32,23 @@ fn infer<B: Backend>(
 
     let model = config.model.init::<B>(&device).load_record(record);
 
-    let batcher = FrameBatcher::new(device);
+    let batcher = FrameBatcher::new(device.clone());
     let batch = batcher.batch(vec![item]);
-    let output = model.forward(batch.images, batch.keys, batch.mouse);
+
+    let mut output = model.forward(
+        batch.images,
+        batch.keys.clone(),
+        batch.mouse.clone(),
+        Tensor::zeros([1], &device),
+    );
+    for timestamp in 1..config.model.num_timestamps {
+        output = model.forward(
+            output,
+            batch.keys.clone(),
+            batch.mouse.clone(),
+            Tensor::from_data(TensorData::new(vec![timestamp as f32], [1]), &device),
+        );
+    }
 
     // let images: Vec<MyImage<HEIGHT, WIDTH>>
     let images = output

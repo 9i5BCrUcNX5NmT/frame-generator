@@ -14,7 +14,7 @@ use super::silu::*;
 use super::attention::qkv_attention;
 
 fn timestep_embedding<B: Backend>(
-    timesteps: Tensor<B, 1, Int>,
+    timesteps: Tensor<B, 1>,
     dim: usize,
     max_period: usize,
 ) -> Tensor<B, 2> {
@@ -22,7 +22,7 @@ fn timestep_embedding<B: Backend>(
     let freqs = (Tensor::arange(0..half as i64, &timesteps.device()).float()
         * (-(max_period as f64).ln() / half as f64))
         .exp();
-    let args = timesteps.float() * freqs;
+    let args = timesteps * freqs;
     Tensor::cat(vec![args.clone().cos(), args.sin()], 0).unsqueeze()
 }
 
@@ -106,7 +106,7 @@ impl<B: Backend> UNet<B> {
     pub fn forward(
         &self,
         x: Tensor<B, 4>,
-        timesteps: Tensor<B, 1, Int>,
+        timesteps: Tensor<B, 1>,
         context: Tensor<B, 3>,
     ) -> Tensor<B, 4> {
         let t_emb = timestep_embedding(timesteps, 320, 10000);

@@ -7,9 +7,9 @@ use burn::{
 
 use crate::data::FrameBatch;
 
-use super::model::Diffusion;
+use super::model::Baseline;
 
-impl<B: Backend> Diffusion<B> {
+impl<B: Backend> Baseline<B> {
     pub fn forward_generation(
         &self,
         inputs: Tensor<B, 4>,
@@ -17,22 +17,23 @@ impl<B: Backend> Diffusion<B> {
         mouse: Tensor<B, 3>,
         targets: Tensor<B, 4>,
     ) -> RegressionOutput<B> {
-        let output = self.forward(inputs, keys, mouse);
+        todo!();
+        // let output = self.forward(inputs, keys, mouse);
 
-        let loss = MseLoss::new().forward(output.clone(), targets.clone(), Reduction::Auto);
+        // let loss = MseLoss::new().forward(output.clone(), targets.clone(), Reduction::Auto);
 
-        let output_2d = output.flatten(1, 3);
-        let targets_2d = targets.flatten(1, 3);
+        // let output_2d = output.flatten(1, 3);
+        // let targets_2d = targets.flatten(1, 3);
 
-        RegressionOutput {
-            loss,
-            output: output_2d,
-            targets: targets_2d,
-        }
+        // RegressionOutput {
+        //     loss,
+        //     output: output_2d,
+        //     targets: targets_2d,
+        // }
     }
 }
 
-impl<B: AutodiffBackend> TrainStep<FrameBatch<B>, RegressionOutput<B>> for Diffusion<B> {
+impl<B: AutodiffBackend> TrainStep<FrameBatch<B>, RegressionOutput<B>> for Baseline<B> {
     fn step(&self, batch: FrameBatch<B>) -> TrainOutput<RegressionOutput<B>> {
         let item = self.forward_generation(batch.images, batch.keys, batch.mouse, batch.targets);
 
@@ -40,7 +41,7 @@ impl<B: AutodiffBackend> TrainStep<FrameBatch<B>, RegressionOutput<B>> for Diffu
     }
 }
 
-impl<B: Backend> ValidStep<FrameBatch<B>, RegressionOutput<B>> for Diffusion<B> {
+impl<B: Backend> ValidStep<FrameBatch<B>, RegressionOutput<B>> for Baseline<B> {
     fn step(&self, batch: FrameBatch<B>) -> RegressionOutput<B> {
         self.forward_generation(batch.images, batch.keys, batch.mouse, batch.targets)
     }
