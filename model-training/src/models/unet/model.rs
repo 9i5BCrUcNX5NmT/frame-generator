@@ -35,10 +35,8 @@ pub struct UNet<B: Backend> {
 
 #[derive(Config, Debug)]
 pub struct UNetConfig {
-    in_channels: usize,
     #[config(default = "8")]
     base_channels: usize,
-    out_channels: usize,
     #[config(default = "16")]
     embed_dim: usize,
     #[config(default = 10)]
@@ -51,7 +49,7 @@ impl UNetConfig {
         UNet {
             mouse_embedder: MouseEmbedderConfig::new(self.embed_dim, 16).init(device),
             keys_embedder: KeyboardEmbedderConfig::new(self.embed_dim, 16).init(device),
-            inc: ConvFusionBlockConfig::new(self.in_channels, self.base_channels, self.embed_dim)
+            inc: ConvFusionBlockConfig::new(CHANNELS, self.base_channels, self.embed_dim)
                 .init(device),
             down1: DownBlockConfig::new(self.base_channels, self.base_channels * 2, self.embed_dim)
                 .init(device),
@@ -95,7 +93,7 @@ impl UNetConfig {
             up4: UpBlockConfig::new(self.base_channels * 2, self.base_channels, self.embed_dim)
                 .init(device),
 
-            out_conv: ConvTranspose2dConfig::new([self.base_channels, self.out_channels], [3, 3])
+            out_conv: ConvTranspose2dConfig::new([self.base_channels, CHANNELS], [3, 3])
                 .init(device),
             adaptive_pool: AdaptiveAvgPool2dConfig::new([HEIGHT, WIDTH]).init(),
         }
