@@ -4,9 +4,14 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-burn = { workspace = true, features = ["train", "ndarray", "wgpu", "cuda-jit"] }
+burn = { workspace = true, features = ["train", "wgpu", "cuda-jit", "ndarray"] }
 csv = "1.3.1"
 image = "0.25.5"
 serde = { version = "1.0.216", features = ["derive"] }
 common = { path = "../common" }
 preprocessor = { path = "../preprocessor" }
+# resnet-burn = { git = "https://github.com/tracel-ai/models", package = "resnet-burn", default-features = false }
+
+# [features]
+# default = []
+# train = ["burn/train"]

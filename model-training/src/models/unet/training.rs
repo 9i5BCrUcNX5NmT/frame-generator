@@ -17,7 +17,10 @@ impl<B: Backend> UNet<B> {
         mouse: Tensor<B, 3>,
         targets: Tensor<B, 4>,
     ) -> RegressionOutput<B> {
-        let output = self.forward(inputs, keys, mouse);
+        let noise = inputs.random_like(burn::tensor::Distribution::Normal(0.0, 1.0));
+        let noised_images = inputs + noise;
+
+        let output = self.forward(noised_images, keys, mouse);
 
         let loss = MseLoss::new().forward(output.clone(), targets.clone(), Reduction::Auto);
 
