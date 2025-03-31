@@ -14,6 +14,12 @@ recorder = { path = "recorder" }
 preprocessor = { path = "preprocessor" }
 common = { path = "common" }
 
+[features]
+default = []
+wgpu = ["model-training/wgpu"]
+cuda = ["model-training/cuda"]
+
+
 [workspace]
 members = [""]
 # members = ["common", "model-training", "preprocessor", "recorder"]

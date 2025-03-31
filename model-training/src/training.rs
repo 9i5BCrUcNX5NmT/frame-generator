@@ -4,6 +4,7 @@ use crate::{
     data::FrameBatcher,
     models::{baseline::model::BaselineConfig, unet::model::UNetConfig},
 };
+
 use burn::{
     backend::{self, Autodiff},
     data::{dataloader::DataLoaderBuilder, dataset::InMemDataset},
@@ -172,12 +173,20 @@ fn train<B: AutodiffBackend>(artifact_dir: &str, config: TrainingConfig, device:
 pub fn run() {
     let artifact_dir = "tmp/test";
 
-    // type MyBackend = backend::NdArray<f32>;
-    // let device = backend::ndarray::NdArrayDevice::default();
+    #[cfg(not(any(feature = "wgpu", feature = "cuda")))]
+    type MyBackend = backend::NdArray<f32>;
+    #[cfg(not(any(feature = "wgpu", feature = "cuda")))]
+    let device = backend::ndarray::NdArrayDevice::default();
+
+    #[cfg(feature = "wgpu")]
     type MyBackend = backend::Wgpu<f32, i32>;
+    #[cfg(feature = "wgpu")]
     let device = backend::wgpu::WgpuDevice::default();
-    // type MyBackend = backend::CudaJit<f32, i32>;
-    // let device = backend::cuda_jit::CudaDevice::default();
+
+    #[cfg(feature = "cuda")]
+    type MyBackend = backend::CudaJit<f32, i32>;
+    #[cfg(feature = "cuda")]
+    let device = backend::cuda_jit::CudaDevice::default();
 
     type MyAutodiffBackend = Autodiff<MyBackend>;
 

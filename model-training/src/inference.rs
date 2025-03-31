@@ -87,12 +87,20 @@ pub fn generate(
 ) -> DynamicImage {
     let artifact_dir = "tmp/test";
 
-    // type MyBackend = backend::CudaJit<f32, i32>;
-    // let device = backend::cuda_jit::CudaDevice::default();
+    #[cfg(not(any(feature = "wgpu", feature = "cuda")))]
+    type MyBackend = backend::NdArray<f32>;
+    #[cfg(not(any(feature = "wgpu", feature = "cuda")))]
+    let device = backend::ndarray::NdArrayDevice::default();
+
+    #[cfg(feature = "wgpu")]
     type MyBackend = backend::Wgpu<f32, i32>;
+    #[cfg(feature = "wgpu")]
     let device = backend::wgpu::WgpuDevice::default();
-    // type MyBackend = backend::NdArray<f32>;
-    // let device = backend::ndarray::NdArrayDevice::default();
+
+    #[cfg(feature = "cuda")]
+    type MyBackend = backend::CudaJit<f32, i32>;
+    #[cfg(feature = "cuda")]
+    let device = backend::cuda_jit::CudaDevice::default();
 
     let my_image: MyImage<HEIGHT, WIDTH, CHANNELS> = MyImage::from_image(current_image);
 
