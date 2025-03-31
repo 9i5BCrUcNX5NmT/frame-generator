@@ -4,17 +4,15 @@ use std::{
 };
 
 use hdf5_metno::H5Type;
-use image::{DynamicImage, RgbaImage};
+use image::{DynamicImage, GenericImageView, RgbaImage};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
 pub struct ImageData {
     image_path: PathBuf,
 }
 
-fn load_image(image_data: &ImageData) -> RgbaImage {
-    image::open(&image_data.image_path)
-        .expect("Failed to open image")
-        .to_rgba8()
+fn load_image(image_data: &ImageData) -> DynamicImage {
+    image::open(&image_data.image_path).expect("Failed to open image")
 }
 
 fn resize_image(image: &DynamicImage, width: u32, height: u32) -> DynamicImage {
@@ -97,20 +95,21 @@ impl<const H: usize, const W: usize, const C: usize> fmt::Debug for MyImage<H, W
 }
 
 impl<const H: usize, const W: usize, const C: usize> MyImage<H, W, C> {
-    pub fn from_image(image: &RgbaImage) -> Self {
-        let mut pixels: [[[u8; W]; H]; C] = [[[0; W]; H]; C];
+    // pub fn from_image(image: &DynamicImage) -> Self {
+    //     let image = image.to_rgba8();
+    //     let mut pixels: [[[u8; W]; H]; C] = [[[0; W]; H]; C];
 
-        for (i, pixel) in image.pixels().enumerate() {
-            let height = (i / C / W) % H;
-            let width = (i / C) % W;
+    //     for (i, pixel) in image.pixels().enumerate() {
+    //         let height = (i / C / W) % H;
+    //         let width = (i / C) % W;
 
-            for (color_index, color) in pixel.0.iter().enumerate() {
-                pixels[color_index][height][width] = *color;
-            }
-        }
+    //         for (color_index, color) in pixel.0.iter().enumerate() {
+    //             pixels[color_index][height][width] = *color;
+    //         }
+    //     }
 
-        MyImage { pixels }
-    }
+    //     MyImage { pixels }
+    // }
 
     // pub fn to_image(&self) -> RgbaImage {
     //     let mut img = RgbaImage::new(W as u32, H as u32);
@@ -130,36 +129,36 @@ impl<const H: usize, const W: usize, const C: usize> MyImage<H, W, C> {
     //     img
     // }
 
-    // pub fn from_image(image: &DynamicImage) -> Self {
-    //     let mut pixels: [[[f32; W]; H]; CHANNELS] = [[[0.0; W]; H]; CHANNELS];
+    pub fn from_image(image: &DynamicImage) -> Self {
+        let mut pixels: [[[u8; W]; H]; C] = [[[0; W]; H]; C];
 
-    //     for (height, width, colors) in image.pixels() {
-    //         for (i, color) in colors.0.iter().enumerate() {
-    //             pixels[i][height as usize][width as usize] = *color;
-    //         }
-    //     }
+        for (height, width, colors) in image.pixels() {
+            for (i, color) in colors.0.iter().enumerate() {
+                pixels[i][width as usize][height as usize] = *color;
+            }
+        }
 
-    //     MyImage { pixels }
-    // }
+        MyImage { pixels }
+    }
 
-    // pub fn to_image(&self) -> DynamicImage {
-    //     let mut img = RgbaImage::new(W as u32, H as u32);
+    pub fn to_image(&self) -> DynamicImage {
+        let mut img = RgbaImage::new(W as u32, H as u32);
 
-    //     for i in 0..H {
-    //         for j in 0..W {
-    //             let pixel = Rgba([
-    //                 self.pixels[0][i][j],
-    //                 self.pixels[1][i][j],
-    //                 self.pixels[2][i][j],
-    // self.pixels[3][i][j],
-    //             ]);
+        for i in 0..H {
+            for j in 0..W {
+                let pixel = image::Rgba([
+                    self.pixels[0][i][j],
+                    self.pixels[1][i][j],
+                    self.pixels[2][i][j],
+                    self.pixels[3][i][j],
+                ]);
 
-    //             img.put_pixel(j as u32, i as u32, pixel);
-    //         }
-    //     }
+                img.put_pixel(j as u32, i as u32, pixel);
+            }
+        }
 
-    //     image::DynamicImage::ImageRgba8(img)
-    // }
+        image::DynamicImage::ImageRgba8(img)
+    }
 
     pub fn from_image_data(image_data: &ImageData) -> MyImage<H, W, C> {
         let image = load_image(image_data);

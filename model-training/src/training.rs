@@ -12,6 +12,7 @@ use burn::{
     prelude::*,
     record::CompactRecorder,
     tensor::{activation::sigmoid, backend::AutodiffBackend},
+    train::{LearnerBuilder, metric::LossMetric},
 };
 
 use preprocessor::{hdf5_processing::read_all_hdf5_files, types::MyConstData};
@@ -55,13 +56,13 @@ fn train<B: AutodiffBackend>(artifact_dir: &str, config: TrainingConfig, device:
     let train_len = (my_data.len() as f64 * train_percintil) as usize;
 
     let train_data = my_data[..train_len].to_vec();
-    // let test_data = my_data[train_len..].to_vec();
+    let test_data = my_data[train_len..].to_vec();
 
     let dataset_train: InMemDataset<MyConstData> = InMemDataset::new(train_data);
-    // let dataset_test: InMemDataset<MyConstData> = InMemDataset::new(test_data);
+    let dataset_test: InMemDataset<MyConstData> = InMemDataset::new(test_data);
 
     let batcher_train = FrameBatcher::<B>::new(device.clone());
-    // let batcher_valid = FrameBatcher::<B::InnerBackend>::new(device.clone());
+    let batcher_valid = FrameBatcher::<B::InnerBackend>::new(device.clone());
 
     let dataloader_train = DataLoaderBuilder::new(batcher_train)
         .batch_size(config.batch_size)
@@ -69,70 +70,89 @@ fn train<B: AutodiffBackend>(artifact_dir: &str, config: TrainingConfig, device:
         .num_workers(config.num_workers)
         .build(dataset_train);
 
-    // let dataloader_test = DataLoaderBuilder::new(batcher_valid)
-    //     .batch_size(config.batch_size)
-    //     .shuffle(config.seed)
-    //     .num_workers(config.num_workers)
-    //     .build(dataset_test);
+    let dataloader_test = DataLoaderBuilder::new(batcher_valid)
+        .batch_size(config.batch_size)
+        .shuffle(config.seed)
+        .num_workers(config.num_workers)
+        .build(dataset_test);
 
-    // My
-    let mut model = config.model.init(&device);
+    // // My
+    // let mut model = config.model.init(&device);
 
-    let mut optimizer = config.optimizer.init();
+    // let mut optimizer = config.optimizer.init();
 
-    for epoch in 1..config.num_epochs + 1 {
-        for (iteration, batch) in dataloader_train.iter().enumerate() {
-            // base diffusion train
-            let random_timestamps = Tensor::<B, 1>::random(
-                [batch.images.dims()[0]],
-                burn::tensor::Distribution::Normal(0.0, 1.0),
-                &device,
-            );
+    // for epoch in 1..config.num_epochs + 1 {
+    //     for (iteration, batch) in dataloader_train.iter().enumerate() {
+    //         // base diffusion train
+    //         let random_timestamps = Tensor::<B, 1>::random(
+    //             [batch.images.dims()[0]],
+    //             burn::tensor::Distribution::Normal(0.0, 1.0),
+    //             &device,
+    //         );
 
-            let alpha_timestamps = sigmoid(random_timestamps.clone())
-                .sqrt()
-                .reshape([-1, 1, 1, 1]);
-            let sigma_timestamps = sigmoid(-random_timestamps.clone())
-                .sqrt()
-                .reshape([-1, 1, 1, 1]);
+    //         let alpha_timestamps = sigmoid(random_timestamps.clone())
+    //             .sqrt()
+    //             .reshape([-1, 1, 1, 1]);
+    //         let sigma_timestamps = sigmoid(-random_timestamps.clone())
+    //             .sqrt()
+    //             .reshape([-1, 1, 1, 1]);
 
-            let noise = batch
-                .images
-                .random_like(burn::tensor::Distribution::Default);
-            let noised_images = batch.images * alpha_timestamps + noise.clone() * sigma_timestamps;
-            // let noised_images = diffuse(batch.images.clone(), alpha_timestamps, sigma_timestamps);
+    //         let noise = batch
+    //             .images
+    //             .random_like(burn::tensor::Distribution::Default);
+    //         let noised_images = batch.images * alpha_timestamps + noise.clone() * sigma_timestamps;
+    //         // let noised_images = diffuse(batch.images.clone(), alpha_timestamps, sigma_timestamps);
 
-            let predict = model.forward(
-                noised_images.clone(),
-                batch.keys.clone(),
-                batch.mouse.clone(),
-                random_timestamps.clone(),
-            );
+    //         let predict = model.forward(
+    //             noised_images.clone(),
+    //             batch.keys.clone(),
+    //             batch.mouse.clone(),
+    //             random_timestamps.clone(),
+    //         );
 
-            // let snr = random_timestamps.exp().clamp_max(5);
-            // let weight = snr.recip().reshape([-1, 1, 1, 1]);
+    //         // let snr = random_timestamps.exp().clamp_max(5);
+    //         // let weight = snr.recip().reshape([-1, 1, 1, 1]);
 
-            let loss = MseLoss::new().forward(predict, noise, Reduction::Auto); // TODO: Mean or Sum?
+    //         let loss = MseLoss::new().forward(predict, noise, Reduction::Auto); // TODO: Mean or Sum?
 
-            println!(
-                "[Train - Epoch {} - Iteration {}] Loss {:.3}",
-                epoch,
-                iteration,
-                loss.clone().into_scalar(),
-            );
+    //         println!(
+    //             "[Train - Epoch {} - Iteration {}] Loss {:.3}",
+    //             epoch,
+    //             iteration,
+    //             loss.clone().into_scalar(),
+    //         );
 
-            let grads = loss.backward();
-            let grads = GradientsParams::from_grads(grads, &model);
-            model = optimizer.step(config.learning_rate, model, grads);
-        }
+    //         let grads = loss.backward();
+    //         let grads = GradientsParams::from_grads(grads, &model);
+    //         model = optimizer.step(config.learning_rate, model, grads);
+    //     }
 
-        println!("\nEpoch: {}\n", epoch);
-    }
+    //     println!("\nEpoch: {}\n", epoch);
+    // }
 
-    model
+    // model
+    //     .save_file(format!("{artifact_dir}/model"), &CompactRecorder::new())
+    //     .expect("Trained model should be saved successfully");
+    // println!("Model is save");
+
+    let learner = LearnerBuilder::new(artifact_dir)
+        .metric_train_numeric(LossMetric::new())
+        .metric_valid_numeric(LossMetric::new())
+        .with_file_checkpointer(CompactRecorder::new())
+        .devices(vec![device.clone()])
+        .num_epochs(config.num_epochs)
+        .summary()
+        .build(
+            config.model.init::<B>(&device),
+            config.optimizer.init(),
+            config.learning_rate,
+        );
+
+    let model_trained = learner.fit(dataloader_train, dataloader_test);
+
+    model_trained
         .save_file(format!("{artifact_dir}/model"), &CompactRecorder::new())
         .expect("Trained model should be saved successfully");
-    println!("Model is save");
 }
 
 // /// Зашумление

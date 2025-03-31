@@ -17,19 +17,21 @@ impl<B: Backend> Baseline<B> {
         mouse: Tensor<B, 3>,
         targets: Tensor<B, 4>,
     ) -> RegressionOutput<B> {
-        todo!();
-        // let output = self.forward(inputs, keys, mouse);
+        let noise = inputs.random_like(burn::tensor::Distribution::Normal(0.0, 1.0));
+        let noised_images = inputs + noise;
 
-        // let loss = MseLoss::new().forward(output.clone(), targets.clone(), Reduction::Auto);
+        let output = self.forward(noised_images, keys, mouse);
 
-        // let output_2d = output.flatten(1, 3);
-        // let targets_2d = targets.flatten(1, 3);
+        let loss = MseLoss::new().forward(output.clone(), targets.clone(), Reduction::Auto);
 
-        // RegressionOutput {
-        //     loss,
-        //     output: output_2d,
-        //     targets: targets_2d,
-        // }
+        let output_2d = output.flatten(1, 3);
+        let targets_2d = targets.flatten(1, 3);
+
+        RegressionOutput {
+            loss,
+            output: output_2d,
+            targets: targets_2d,
+        }
     }
 }
 

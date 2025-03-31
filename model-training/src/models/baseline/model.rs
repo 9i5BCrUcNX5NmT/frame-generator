@@ -18,8 +18,7 @@ use super::blocks::{
 pub struct Baseline<B: Backend> {
     mouse_embedder: MouseEmbedder<B>,
     keys_embedder: KeyboardEmbedder<B>,
-    timestep_embedder: TimestempEmbedder<B>,
-
+    // timestep_embedder: TimestempEmbedder<B>,
     layer1: LayerBlock<B>,
     layer2: LayerBlock<B>,
     layer3: LayerBlock<B>,
@@ -33,14 +32,14 @@ pub struct Baseline<B: Backend> {
 pub struct BaselineConfig {
     #[config(default = "16")]
     embed_dim: usize,
-    #[config(default = 10)]
-    pub num_timestamps: usize,
+    // #[config(default = 10)]
+    // pub num_timestamps: usize,
 }
 
 impl BaselineConfig {
     pub fn init<B: Backend>(&self, device: &B::Device) -> Baseline<B> {
         let layer1 = LayerBlock::new(
-            (CHANNELS + self.embed_dim * 3) * WIDTH * HEIGHT,
+            (CHANNELS + self.embed_dim * 2) * WIDTH * HEIGHT,
             128,
             device,
         );
@@ -54,8 +53,8 @@ impl BaselineConfig {
         Baseline {
             mouse_embedder: MouseEmbedderConfig::new(self.embed_dim, self.embed_dim).init(device),
             keys_embedder: KeyboardEmbedderConfig::new(self.embed_dim, self.embed_dim).init(device),
-            timestep_embedder: TimestempEmbedderConfig::new(self.embed_dim, self.embed_dim)
-                .init(device),
+            // timestep_embedder: TimestempEmbedderConfig::new(self.embed_dim, self.embed_dim)
+            //     .init(device),
             layer1,
             layer2,
             layer3,
@@ -73,12 +72,12 @@ impl<B: Backend> Baseline<B> {
         images: Tensor<B, 4>,
         keys: Tensor<B, 2>,
         mouse: Tensor<B, 3>,
-        timesteps: Tensor<B, 1>,
+        // timesteps: Tensor<B, 1>,
     ) -> Tensor<B, 4> {
         // Получаем эмбеддинги
         let mouse_emb = self.mouse_embedder.forward(mouse); // [b, embed_dim]
         let keys_emb = self.keys_embedder.forward(keys); // [b, embed_dim]
-        let timesteps_emb = self.timestep_embedder.forward(timesteps); // [b, embed_dim]
+        // let timesteps_emb = self.timestep_embedder.forward(timesteps); // [b, embed_dim]
 
         // здесь для простоты просто суммируем
         // let embed = mouse_emb + keys_emb; // [b, embed_dim]
@@ -86,11 +85,11 @@ impl<B: Backend> Baseline<B> {
             vec![
                 mouse_emb.unsqueeze_dim(1),
                 keys_emb.unsqueeze_dim(1),
-                timesteps_emb.unsqueeze_dim(1),
+                // timesteps_emb.unsqueeze_dim(1),
             ],
             2,
-        ); // [b, 3, embed_dim]
-        let embed: Tensor<B, 2> = embed.flatten(1, 2); // [b, embed_dim * 3]
+        ); // [b, 2, embed_dim]
+        let embed: Tensor<B, 2> = embed.flatten(1, 2); // [b, embed_dim * 2]
 
         let [batch_size, channels, height, width] = images.dims();
         let [_, embedding_dim] = embed.dims();

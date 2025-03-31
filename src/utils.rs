@@ -383,7 +383,7 @@ pub fn generate_frame(
         }
     };
 
-    // let dimage = DynamicImage::from(current_image.clone());
+    let dimage = DynamicImage::from(current_image.clone());
     // save_image(&dimage, &PathBuf::from_str("tmp/image.png").unwrap());
 
     let mouse = mouse
@@ -391,8 +391,7 @@ pub fn generate_frame(
         .map(|p| [(p.x * 2.0) as i32, (p.y * 2.0) as i32]) // 0.0, 0.5, 1.0, 1.5 ... => 0, 1, 2, 3 ...
         .collect();
 
-    let image: RgbaImage =
-        model_training::inference::generate(&current_image, keys, mouse).to_rgba8();
+    let image: RgbaImage = model_training::inference::generate(&dimage, keys, mouse).to_rgba8();
 
     // let pixels: Vec<(u32, u32, Rgba<u8>)> = image
     //     .pixels()
