@@ -7,13 +7,13 @@ use burn::{
     module::Module,
     prelude::Backend,
     record::{CompactRecorder, Recorder},
-    tensor::{Data, Float, Tensor, TensorData},
+    tensor::Tensor,
 };
 use common::*;
-use image::{DynamicImage, Rgba32FImage, RgbaImage};
+use image::{DynamicImage, Rgba32FImage};
 use preprocessor::{
     csv_processing::{KeysRecordConst, key_to_num},
-    images::{MyImage, save_image},
+    images::MyImage,
     types::MyConstData,
 };
 
@@ -50,13 +50,13 @@ fn infer<B: Backend>(
     //     );
     // }
 
-    // let output = model.forward(
-    //     batch.images.clone(),
-    //     batch.keys.clone(),
-    //     batch.mouse.clone(),
-    // );
-    // let output = batch.images * 0.9 + output * 0.1;
-    let output: Tensor<B, 4> = batch.images;
+    let output = model.forward(
+        batch.images.clone(),
+        batch.keys.clone(),
+        batch.mouse.clone(),
+    );
+    let output = batch.images * 0.9 + output * 0.1;
+    // let output: Tensor<B, 4> = batch.images;
 
     // let images: Vec<MyImage<HEIGHT, WIDTH>>
     let images = output
