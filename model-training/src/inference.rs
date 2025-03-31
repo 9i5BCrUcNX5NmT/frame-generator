@@ -10,7 +10,7 @@ use burn::{
     tensor::{Data, Float, Tensor, TensorData},
 };
 use common::*;
-use image::{DynamicImage, RgbaImage};
+use image::{DynamicImage, Rgba32FImage, RgbaImage};
 use preprocessor::{
     csv_processing::{KeysRecordConst, key_to_num},
     images::{MyImage, save_image},
@@ -32,8 +32,8 @@ fn infer<B: Backend>(
 
     let model = config.model.init::<B>(&device).load_record(record);
 
-    // let batcher = FrameBatcher::new(device.clone());
-    // let batch = batcher.batch(vec![item]);
+    let batcher = FrameBatcher::new(device.clone());
+    let batch = batcher.batch(vec![item]);
 
     // let mut output = model.forward(
     //     batch.images,
@@ -56,28 +56,28 @@ fn infer<B: Backend>(
     //     batch.mouse.clone(),
     // );
     // let output = batch.images * 0.9 + output * 0.1;
-    // let output: Tensor<B, 4> = batch.images;
+    let output: Tensor<B, 4> = batch.images;
 
-    // // let images: Vec<MyImage<HEIGHT, WIDTH>>
-    // let images = output
-    //     .iter_dim(0)
-    //     // Возвращение из нормализации
-    //     .map(|tensor| tensor * 255)
-    //     .map(|tensor| tensor.to_data())
-    //     .map(|data| data.to_vec::<f32>().unwrap())
-    //     .map(|vector| vector.iter().map(|v| *v as u8).collect())
-    //     .map(|vector| {
-    //         let image = RgbaImage::from_vec(WIDTH as u32, HEIGHT as u32, vector).unwrap();
+    // let images: Vec<MyImage<HEIGHT, WIDTH>>
+    let images = output
+        .iter_dim(0)
+        // Возвращение из нормализации
+        // .map(|tensor| tensor * 255)
+        .map(|tensor| tensor.to_data())
+        .map(|data| data.to_vec().unwrap())
+        // .map(|vector| vector.iter().map(|v| *v as u8).collect())
+        .map(|vector| {
+            let image = Rgba32FImage::from_vec(WIDTH as u32, HEIGHT as u32, vector).unwrap();
 
-    //         DynamicImage::from(image)
-    //         // RgbaImage::from_vec(WIDTH as u32, HEIGHT as u32, vector).unwrap()
-    //     })
-    //     .collect();
+            DynamicImage::from(image)
+            // RgbaImage::from_vec(WIDTH as u32, HEIGHT as u32, vector).unwrap()
+        })
+        .collect();
 
-    // // let dynamic_images = images.iter().map(|image| image.to_image()).collect();
-    // // dynamic_images
-    // images
-    vec![item.image.to_image()]
+    // let dynamic_images = images.iter().map(|image| image.to_image()).collect();
+    // dynamic_images
+
+    images
 }
 
 pub fn generate(
@@ -99,37 +99,35 @@ pub fn generate(
     // TODO: мб пофиксить?
     // Да не, пока норм вроде
 
-    // let keys: Vec<u8> = keys
-    //     .into_iter()
-    //     .filter(|key| !key.is_empty())
-    //     .map(|key| key.to_lowercase())
-    //     .map(|key| key_to_num(&key))
-    //     .collect();
+    let keys: Vec<u8> = keys
+        .into_iter()
+        .filter(|key| !key.is_empty())
+        .map(|key| key.to_lowercase())
+        .map(|key| key_to_num(&key))
+        .collect();
 
-    // let mut const_keys: [u8; 200] = [0; 200];
+    let mut const_keys: [u8; 200] = [0; 200];
 
-    // for (i, value) in keys.iter().enumerate() {
-    //     const_keys[i] = *value;
-    // }
+    for (i, value) in keys.iter().enumerate() {
+        const_keys[i] = *value;
+    }
 
-    // let mut const_mouse: [[i32; 2]; 200] = [[0; 2]; 200];
+    let mut const_mouse: [[i32; 2]; 200] = [[0; 2]; 200];
 
-    // for (i, value) in mouse.iter().enumerate() {
-    //     const_mouse[i] = *value;
-    // }
+    for (i, value) in mouse.iter().enumerate() {
+        const_mouse[i] = *value;
+    }
 
-    // let item = MyConstData {
-    //     image: my_image,
-    //     keys_record: KeysRecordConst {
-    //         keys: const_keys,
-    //         mouse: const_mouse,
-    //     },
-    // };
+    let item = MyConstData {
+        image: my_image,
+        keys_record: KeysRecordConst {
+            keys: const_keys,
+            mouse: const_mouse,
+        },
+    };
 
-    // let next_image =
-    //     crate::inference::infer::<MyBackend>(artifact_dir, device.clone(), item)[0].clone();
+    let next_image =
+        crate::inference::infer::<MyBackend>(artifact_dir, device.clone(), item)[0].clone();
 
-    // next_image
-
-    my_image.to_image()
+    next_image
 }

@@ -60,9 +60,14 @@ impl<B: Backend> FrameBatcher<B> {
     fn extract_const_images(&self, mydata: &Vec<MyConstData>) -> Tensor<B, 4> {
         let images = mydata
             .iter()
-            .map(|data| TensorData::from(data.image.pixels).convert::<B::FloatElem>())
+            .map(|data| {
+                TensorData::new(
+                    data.image.to_image().as_bytes().to_vec(),
+                    [CHANNELS, HEIGHT, WIDTH],
+                )
+            })
             .map(|data| Tensor::<B, 3>::from_data(data, &self.device))
-            .map(|tensor| tensor.reshape([1, CHANNELS, HEIGHT, WIDTH]))
+            .map(|tensor| tensor.unsqueeze_dim(0)) // [1, ...]
             // Простая нормализация цветов
             .map(|tensor| tensor / 255.0)
             .collect();
