@@ -17,7 +17,17 @@ impl<B: Backend> Baseline<B> {
         mouse: Tensor<B, 3>,
         targets: Tensor<B, 4>,
     ) -> RegressionOutput<B> {
-        let noise = inputs.random_like(burn::tensor::Distribution::Normal(0.0, 1.0));
+        const P_STD: f32 = 1.2;
+        const P_MEAN: f32 = -1.2;
+
+        let random_normal = Tensor::random(
+            [inputs.dims()[0], 1, 1, 1],
+            burn::tensor::Distribution::Normal(0.0, 1.0),
+            &inputs.device(),
+        );
+        let sigma = (random_normal * P_STD + P_MEAN).exp();
+        let noise = inputs.random_like(burn::tensor::Distribution::Normal(0.0, 1.0)) * sigma;
+
         let noised_images = inputs + noise;
 
         let output = self.forward(noised_images, keys, mouse);

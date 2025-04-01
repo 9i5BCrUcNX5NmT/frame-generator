@@ -20,7 +20,7 @@ use preprocessor::{hdf5_processing::read_all_hdf5_files, types::MyConstData};
 
 #[derive(Config)]
 pub(crate) struct TrainingConfig {
-    pub model: BaseUNetConfig,
+    pub model: BaselineConfig,
     pub optimizer: AdamConfig,
     #[config(default = 15)]
     pub num_epochs: usize,
@@ -192,7 +192,7 @@ pub fn run() {
 
     crate::training::train::<MyAutodiffBackend>(
         artifact_dir,
-        TrainingConfig::new(BaseUNetConfig::new(), AdamConfig::new()),
+        TrainingConfig::new(BaselineConfig::new(), AdamConfig::new()),
         device.clone(),
     );
 }
