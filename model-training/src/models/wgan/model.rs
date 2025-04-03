@@ -1,21 +1,42 @@
-use burn::prelude::*;
+use burn::{nn::BatchNorm, prelude::*};
 
 use common::*;
 
 use crate::models::embedders::{
     KeyboardEmbedder, KeyboardEmbedderConfig, MouseEmbedder, MouseEmbedderConfig,
-    TimestempEmbedder, TimestempEmbedderConfig,
 };
 
-use super::blocks::{
-    my::LayerBlock,
-    unet::{UNet, UNetConfig},
-};
+/// Layer block of generator model
+#[derive(Module, Debug)]
+pub struct LayerBlock<B: Backend> {
+    fc: nn::Linear<B>,
+    bn: nn::BatchNorm<B, 0>,
+    leakyrelu: nn::LeakyRelu,
+}
 
-// TODO: Разделить модель диффузии и её саму
+impl<B: Backend> LayerBlock<B> {
+    pub fn new(input: usize, output: usize, device: &B::Device) -> Self {
+        let fc = nn::LinearConfig::new(input, output)
+            .with_bias(true)
+            .init(device);
+        let bn: BatchNorm<B, 0> = nn::BatchNormConfig::new(output)
+            .with_epsilon(0.8)
+            .init(device);
+        let leakyrelu = nn::LeakyReluConfig::new().with_negative_slope(0.2).init();
+
+        Self { fc, bn, leakyrelu }
+    }
+
+    pub fn forward(&self, input: Tensor<B, 2>) -> Tensor<B, 2> {
+        let output = self.fc.forward(input); // output: [Batch, x]
+        let output = self.bn.forward(output); // output: [Batch, x]
+
+        self.leakyrelu.forward(output) // output: [Batch, x]
+    }
+}
 
 #[derive(Module, Debug)]
-pub struct Baseline<B: Backend> {
+pub struct WganDecoder<B: Backend> {
     mouse_embedder: MouseEmbedder<B>,
     keys_embedder: KeyboardEmbedder<B>,
     // timestep_embedder: TimestempEmbedder<B>,
@@ -29,15 +50,15 @@ pub struct Baseline<B: Backend> {
 }
 
 #[derive(Config, Debug)]
-pub struct BaselineConfig {
+pub struct WganDecoderConfig {
     #[config(default = "16")]
     embed_dim: usize,
     // #[config(default = 10)]
     // pub num_timestamps: usize,
 }
 
-impl BaselineConfig {
-    pub fn init<B: Backend>(&self, device: &B::Device) -> Baseline<B> {
+impl WganDecoderConfig {
+    pub fn init<B: Backend>(&self, device: &B::Device) -> WganDecoder<B> {
         let layer1 = LayerBlock::new(
             (CHANNELS + self.embed_dim * 2) * WIDTH * HEIGHT,
             128,
@@ -50,7 +71,7 @@ impl BaselineConfig {
             .with_bias(true)
             .init(device);
 
-        Baseline {
+        WganDecoder {
             mouse_embedder: MouseEmbedderConfig::new(self.embed_dim, self.embed_dim).init(device),
             keys_embedder: KeyboardEmbedderConfig::new(self.embed_dim, self.embed_dim).init(device),
             // timestep_embedder: TimestempEmbedderConfig::new(self.embed_dim, self.embed_dim)
@@ -66,7 +87,7 @@ impl BaselineConfig {
     }
 }
 
-impl<B: Backend> Baseline<B> {
+impl<B: Backend> WganDecoder<B> {
     pub fn forward(
         &self,
         images: Tensor<B, 4>,

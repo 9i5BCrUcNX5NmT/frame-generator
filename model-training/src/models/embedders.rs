@@ -76,37 +76,37 @@ impl<B: Backend> KeyboardEmbedder<B> {
     }
 }
 
-#[derive(Module, Debug)]
-pub struct TimestempEmbedder<B: Backend> {
-    linear1: Linear<B>,
-    activation: Relu,
-    linear2: Linear<B>,
-}
+// #[derive(Module, Debug)]
+// pub struct TimestempEmbedder<B: Backend> {
+//     linear1: Linear<B>,
+//     activation: Relu,
+//     linear2: Linear<B>,
+// }
 
-#[derive(Config, Debug)]
-pub struct TimestempEmbedderConfig {
-    input_dim: usize,
-    output_dim: usize,
-}
+// #[derive(Config, Debug)]
+// pub struct TimestempEmbedderConfig {
+//     input_dim: usize,
+//     output_dim: usize,
+// }
 
-impl TimestempEmbedderConfig {
-    pub fn init<B: Backend>(&self, device: &B::Device) -> TimestempEmbedder<B> {
-        TimestempEmbedder {
-            linear1: LinearConfig::new(self.input_dim, self.input_dim * 2).init(device),
-            activation: Relu,
-            linear2: LinearConfig::new(self.input_dim * 2, self.output_dim).init(device),
-        }
-    }
-}
+// impl TimestempEmbedderConfig {
+//     pub fn init<B: Backend>(&self, device: &B::Device) -> TimestempEmbedder<B> {
+//         TimestempEmbedder {
+//             linear1: LinearConfig::new(self.input_dim, self.input_dim * 2).init(device),
+//             activation: Relu,
+//             linear2: LinearConfig::new(self.input_dim * 2, self.output_dim).init(device),
+//         }
+//     }
+// }
 
-impl<B: Backend> TimestempEmbedder<B> {
-    /// Normal method added to a struct.
-    pub fn forward(&self, timesteps: Tensor<B, 1>) -> Tensor<B, 2> {
-        let x = timesteps.reshape([-1, 1]).expand([-1, 16]); // TODO: как заменить 16?
-        let x = self.linear1.forward(x);
-        let x = self.activation.forward(x);
-        let x = self.linear2.forward(x);
+// impl<B: Backend> TimestempEmbedder<B> {
+//     /// Normal method added to a struct.
+//     pub fn forward(&self, timesteps: Tensor<B, 1>) -> Tensor<B, 2> {
+//         let x = timesteps.reshape([-1, 1]).expand([-1, 16]); // TODO: как заменить 16?
+//         let x = self.linear1.forward(x);
+//         let x = self.activation.forward(x);
+//         let x = self.linear2.forward(x);
 
-        x
-    }
-}
+//         x
+//     }
+// }

@@ -7,9 +7,9 @@ use burn::{
 
 use crate::data::FrameBatch;
 
-use super::model::Baseline;
+use super::model::WganDecoder;
 
-impl<B: Backend> Baseline<B> {
+impl<B: Backend> WganDecoder<B> {
     pub fn forward_generation(
         &self,
         inputs: Tensor<B, 4>,
@@ -45,7 +45,7 @@ impl<B: Backend> Baseline<B> {
     }
 }
 
-impl<B: AutodiffBackend> TrainStep<FrameBatch<B>, RegressionOutput<B>> for Baseline<B> {
+impl<B: AutodiffBackend> TrainStep<FrameBatch<B>, RegressionOutput<B>> for WganDecoder<B> {
     fn step(&self, batch: FrameBatch<B>) -> TrainOutput<RegressionOutput<B>> {
         let item = self.forward_generation(batch.images, batch.keys, batch.mouse, batch.targets);
 
@@ -53,7 +53,7 @@ impl<B: AutodiffBackend> TrainStep<FrameBatch<B>, RegressionOutput<B>> for Basel
     }
 }
 
-impl<B: Backend> ValidStep<FrameBatch<B>, RegressionOutput<B>> for Baseline<B> {
+impl<B: Backend> ValidStep<FrameBatch<B>, RegressionOutput<B>> for WganDecoder<B> {
     fn step(&self, batch: FrameBatch<B>) -> RegressionOutput<B> {
         self.forward_generation(batch.images, batch.keys, batch.mouse, batch.targets)
     }
