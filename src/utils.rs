@@ -365,21 +365,23 @@ pub fn generate_frame(
             height,
             pixels,
         } => {
-            let mut image = RgbaImage::new(*width, *height);
+            // let mut image = RgbaImage::new(*width, *height);
 
-            let mut t = 0;
+            // let mut t = 0;
 
-            for i in 0..*height {
-                for j in 0..*width {
-                    let pixel = Rgba([pixels[t], pixels[t + 1], pixels[t + 2], pixels[t + 3]]); // ?
+            // for i in 0..*width {
+            //     for j in 0..*height {
+            //         let pixel = Rgba([pixels[t], pixels[t + 1], pixels[t + 2], pixels[t + 3]]); // ?
 
-                    t += 4;
+            //         t += 4;
 
-                    image.put_pixel(j, i, pixel);
-                }
-            }
+            //         image.put_pixel(i, j, pixel);
+            //     }
+            // }
 
-            image
+            // image
+
+            RgbaImage::from_vec(*width, *height, pixels.to_vec()).unwrap()
         }
     };
 

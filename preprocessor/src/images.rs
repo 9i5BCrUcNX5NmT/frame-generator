@@ -84,7 +84,7 @@ pub fn process_images(
 #[derive(Clone, Copy, H5Type)]
 #[repr(C)]
 pub struct MyImage<const HEIGHT: usize, const WIDTH: usize, const CHANNELS: usize> {
-    pub pixels: [[[u8; WIDTH]; HEIGHT]; CHANNELS],
+    pub pixels: [[[u8; HEIGHT]; WIDTH]; CHANNELS],
 }
 
 impl<const H: usize, const W: usize, const C: usize> fmt::Debug for MyImage<H, W, C> {
@@ -130,9 +130,9 @@ impl<const H: usize, const W: usize, const C: usize> MyImage<H, W, C> {
     // }
 
     pub fn from_image(image: &DynamicImage) -> Self {
-        let mut pixels: [[[u8; W]; H]; C] = [[[0; W]; H]; C];
+        let mut pixels = [[[0; H]; W]; C];
 
-        for (height, width, colors) in image.pixels() {
+        for (width, height, colors) in image.pixels() {
             for (i, color) in colors.0.iter().enumerate() {
                 pixels[i][width as usize][height as usize] = *color;
             }
@@ -144,8 +144,8 @@ impl<const H: usize, const W: usize, const C: usize> MyImage<H, W, C> {
     pub fn to_image(&self) -> DynamicImage {
         let mut img = RgbaImage::new(W as u32, H as u32);
 
-        for i in 0..H {
-            for j in 0..W {
+        for i in 0..W {
+            for j in 0..H {
                 let pixel = image::Rgba([
                     self.pixels[0][i][j],
                     self.pixels[1][i][j],
@@ -153,7 +153,7 @@ impl<const H: usize, const W: usize, const C: usize> MyImage<H, W, C> {
                     self.pixels[3][i][j],
                 ]);
 
-                img.put_pixel(j as u32, i as u32, pixel);
+                img.put_pixel(i as u32, j as u32, pixel);
             }
         }
 
