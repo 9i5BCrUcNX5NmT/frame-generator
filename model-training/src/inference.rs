@@ -50,10 +50,15 @@ fn infer<B: Backend>(
     //     );
     // }
 
+    let noise = batch
+        .images
+        .random_like(burn::tensor::Distribution::Normal(0.0, 1.0));
+
     let output = model.forward(
         batch.images.clone(),
         batch.keys.clone(),
         batch.mouse.clone(),
+        noise,
     );
     let output = batch.images * 0.9 + output * 0.1;
     // let output: Tensor<B, 4> = batch.images;

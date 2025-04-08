@@ -55,8 +55,8 @@ pub struct BaseUNetConfig {
 
     #[config(default = "16")]
     hidden_dim: usize,
-    // #[config(default = 10)]
-    // pub num_timestamps: usize,
+
+    conditional_dim: usize,
 }
 
 impl BaseUNetConfig {
@@ -113,10 +113,9 @@ impl<B: Backend> BaseUNet<B> {
     pub fn forward(
         &self,
         images: Tensor<B, 4>,
-        keys: Tensor<B, 2>,
-        mouse: Tensor<B, 3>,
+        conditional: Tensor<B, 4>, // Дополнительная информация
     ) -> Tensor<B, 4> {
-        // TODO: Добавить обработку keys и mouse
+        // TODO: Добавить обработку condinional
 
         // Encoder
         let x = self.conv1.forward(images);

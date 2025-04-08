@@ -25,4 +25,4 @@ members = [""]
 # members = ["common", "model-training", "preprocessor", "recorder"]
 
 [workspace.dependencies]
-burn = { version = "0.16.0" }
+burn = { version = "0.16.1" }

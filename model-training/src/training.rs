@@ -2,7 +2,11 @@ use std::{path::PathBuf, str::FromStr};
 
 use crate::{
     data::FrameBatcher,
-    models::{unets::base_unet::model::BaseUNetConfig, wgan::model::WganDecoderConfig},
+    models::{
+        model_v1::model::{ModelV1, ModelV1Config},
+        unets::base_unet::model::BaseUNetConfig,
+        wgan::model::WganDecoderConfig,
+    },
 };
 
 use burn::{
@@ -20,9 +24,9 @@ use preprocessor::{hdf5_processing::read_all_hdf5_files, types::MyConstData};
 
 #[derive(Config)]
 pub(crate) struct TrainingConfig {
-    pub model: WganDecoderConfig,
+    pub model: ModelV1Config,
     pub optimizer: AdamConfig,
-    #[config(default = 15)]
+    #[config(default = 25)]
     pub num_epochs: usize,
     #[config(default = 64)]
     pub batch_size: usize,
@@ -192,7 +196,7 @@ pub fn run() {
 
     crate::training::train::<MyAutodiffBackend>(
         artifact_dir,
-        TrainingConfig::new(WganDecoderConfig::new(), AdamConfig::new()),
+        TrainingConfig::new(ModelV1Config::new(), AdamConfig::new()),
         device.clone(),
     );
 }

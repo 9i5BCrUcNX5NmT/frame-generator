@@ -28,14 +28,16 @@ impl<B: Backend> WganDecoder<B> {
         let sigma = (random_normal * P_STD + P_MEAN).exp();
         let noise = inputs.random_like(burn::tensor::Distribution::Normal(0.0, 1.0)) * sigma;
 
-        let noised_images = inputs + noise;
+        let noised_images = inputs.clone() + noise;
 
         let output = self.forward(noised_images, keys, mouse);
 
-        let loss = MseLoss::new().forward(output.clone(), targets.clone(), Reduction::Auto);
+        // let loss = MseLoss::new().forward(output.clone(), targets.clone(), Reduction::Auto);
+        let loss = MseLoss::new().forward(output.clone(), inputs.clone(), Reduction::Auto);
 
         let output_2d = output.flatten(1, 3);
-        let targets_2d = targets.flatten(1, 3);
+        // let targets_2d = targets.flatten(1, 3);
+        let targets_2d = inputs.flatten(1, 3);
 
         RegressionOutput {
             loss,

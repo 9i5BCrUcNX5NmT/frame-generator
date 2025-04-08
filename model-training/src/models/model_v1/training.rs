@@ -7,9 +7,9 @@ use burn::{
 
 use crate::data::FrameBatch;
 
-use super::model::BaseUNet;
+use super::model::ModelV1;
 
-impl<B: Backend> BaseUNet<B> {
+impl<B: Backend> ModelV1<B> {
     pub fn forward_generation(
         &self,
         inputs: Tensor<B, 4>,
@@ -28,16 +28,14 @@ impl<B: Backend> BaseUNet<B> {
         let sigma = (random_normal * P_STD + P_MEAN).exp();
         let noise = inputs.random_like(burn::tensor::Distribution::Normal(0.0, 1.0)) * sigma;
 
-        let noised_images = inputs.clone() + noise;
+        let noised_targets = targets.clone() + noise;
 
-        let output = self.forward(noised_images, keys, mouse);
+        let output = self.forward(inputs, keys, mouse, noised_targets);
 
-        // let loss = MseLoss::new().forward(output.clone(), targets.clone(), Reduction::Auto);
-        let loss = MseLoss::new().forward(output.clone(), inputs.clone(), Reduction::Auto);
+        let loss = MseLoss::new().forward(output.clone(), targets.clone(), Reduction::Auto);
 
         let output_2d = output.flatten(1, 3);
-        // let targets_2d = targets.flatten(1, 3);
-        let targets_2d = inputs.flatten(1, 3);
+        let targets_2d = targets.flatten(1, 3);
 
         RegressionOutput {
             loss,
@@ -47,7 +45,7 @@ impl<B: Backend> BaseUNet<B> {
     }
 }
 
-impl<B: AutodiffBackend> TrainStep<FrameBatch<B>, RegressionOutput<B>> for BaseUNet<B> {
+impl<B: AutodiffBackend> TrainStep<FrameBatch<B>, RegressionOutput<B>> for ModelV1<B> {
     fn step(&self, batch: FrameBatch<B>) -> TrainOutput<RegressionOutput<B>> {
         let item = self.forward_generation(batch.images, batch.keys, batch.mouse, batch.targets);
 
@@ -55,7 +53,7 @@ impl<B: AutodiffBackend> TrainStep<FrameBatch<B>, RegressionOutput<B>> for BaseU
     }
 }
 
-impl<B: Backend> ValidStep<FrameBatch<B>, RegressionOutput<B>> for BaseUNet<B> {
+impl<B: Backend> ValidStep<FrameBatch<B>, RegressionOutput<B>> for ModelV1<B> {
     fn step(&self, batch: FrameBatch<B>) -> RegressionOutput<B> {
         self.forward_generation(batch.images, batch.keys, batch.mouse, batch.targets)
     }
