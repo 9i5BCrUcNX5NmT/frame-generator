@@ -7,12 +7,14 @@ edition = "2024"
 [dependencies]
 burn = { workspace = true }
 # burn = { version = "0.16.0" }
-iced = { version = "0.13.1", features = ["image"] }
+# iced = { version = "0.13.1", features = ["image"] }
 image = "0.25.5"
 model-training = { path = "model-training" }
 recorder = { path = "recorder" }
 preprocessor = { path = "preprocessor" }
 common = { path = "common" }
+ratatui = "0.29.0"
+crossterm = "0.29.0"
 
 [features]
 default = []

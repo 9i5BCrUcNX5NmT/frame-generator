@@ -1,152 +1,149 @@
-use std::thread;
+use std::io;
 
-use iced::keyboard::{Key, Modifiers, on_key_press};
-use iced::widget::{button, column, container, image, mouse_area, row, text};
-use iced::{Alignment, Length, Size};
-use iced::{Element, Point, Subscription, Theme};
-use utils::{DataStatus, check_data, generate_frame, key_to_string};
+use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
+use ratatui::{
+    DefaultTerminal, Frame,
+    buffer::Buffer,
+    layout::Rect,
+    style::Stylize,
+    symbols::border,
+    text::{Line, Text},
+    widgets::{Block, Paragraph, Widget},
+};
 
-mod utils;
-
-#[derive(Debug, Clone)]
-enum Message {
-    Key(String),
-    Mouse(Point<f32>),
-    GenerateImage,
-    ReloadImage,
-    ModelTraining,
-    Record,
-    FramesProcessing,
-    WriteData,
-    CheckData,
+fn main() -> io::Result<()> {
+    let mut terminal = ratatui::init();
+    let app_result = App::default().run(&mut terminal);
+    ratatui::restore();
+    app_result
 }
 
-#[derive(Default)]
-struct State {
-    pub pressed_key: String,
-    pub mouse_position: Point<f32>,
-    pub image: Option<image::Handle>,
-    pub data_status: DataStatus,
-    pub message_to_user: String,
+#[derive(Debug, Default)]
+pub struct App {
+    counter: u8,
+    exit: bool,
 }
 
-fn view(state: &State) -> Element<Message> {
-    let content = column![
-        row![
-            column![
-                text(format!("{}", state.mouse_position.clone())),
-                row![text("Key: "), text(state.pressed_key.clone())],
-            ]
-            .spacing(10),
-            column![
-                text("Status"),
-                // text(format!("Записанное видео: {}", state.data_status.video)),
-                text(format!(
-                    "Преобразование кадров: {}",
-                    state.data_status.resized_images
-                )),
-                text(format!("hdf5 файлы: {}", state.data_status.hdf5_files)),
-                text(format!("Keys: {}", state.data_status.keys)),
-            ]
-            .spacing(10),
-            column![text("Log"), text(state.message_to_user.clone()),].spacing(10)
-        ]
-        .spacing(10),
-        match &state.image {
-            Some(image_handle) => image(image_handle),
-            None => image(""),
+impl App {
+    /// runs the application's main loop until the user quits
+    pub fn run(&mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
+        while !self.exit {
+            terminal.draw(|frame| self.draw(frame))?;
+            self.handle_events()?;
         }
-        .width(Length::Fill)
-        .height(Length::Fill),
-        column![
-            row![
-                button(text("Генерация")).on_press(Message::GenerateImage),
-                button(text("Сбросить изображение")).on_press(Message::ReloadImage),
-                button(text("Перезагрузить статус")).on_press(Message::CheckData),
-            ],
-            row![
-                button(text("Запись")).on_press(Message::Record),
-                button(text("Обработать кадры")).on_press(Message::FramesProcessing),
-                button(text("Записать в hdf5")).on_press(Message::WriteData),
-            ],
-            row![button(text("Тренировка")).on_press(Message::ModelTraining),]
-        ]
-        .spacing(10)
-    ]
-    .align_x(Alignment::End)
-    .spacing(10)
-    .padding(10);
+        Ok(())
+    }
 
-    mouse_area(
-        container(content)
-            .center_x(Length::Fill)
-            .center_y(Length::Fill),
-    )
-    .on_move(|point| Message::Mouse(point))
-    .into()
+    fn draw(&self, frame: &mut Frame) {
+        frame.render_widget(self, frame.area());
+    }
+
+    /// updates the application's state based on user input
+    fn handle_events(&mut self) -> io::Result<()> {
+        match event::read()? {
+            // it's important to check that the event is a key press event as
+            // crossterm also emits key release and repeat events on Windows.
+            Event::Key(key_event) if key_event.kind == KeyEventKind::Press => {
+                self.handle_key_event(key_event)
+            }
+            _ => {}
+        };
+        Ok(())
+    }
+
+    fn handle_key_event(&mut self, key_event: KeyEvent) {
+        match key_event.code {
+            KeyCode::Char('q') => self.exit(),
+            KeyCode::Left => self.decrement_counter(),
+            KeyCode::Right => self.increment_counter(),
+            _ => {}
+        }
+    }
+
+    fn exit(&mut self) {
+        self.exit = true;
+    }
+
+    fn increment_counter(&mut self) {
+        self.counter += 1;
+    }
+
+    fn decrement_counter(&mut self) {
+        self.counter -= 1;
+    }
 }
 
-fn capture_key(key: Key, _modifiers: Modifiers) -> Option<Message> {
-    let key = match key {
-        Key::Named(named) => key_to_string(named),
-        Key::Character(character) => character.to_string(),
-        Key::Unidentified => "".to_string(),
-    };
+impl Widget for &App {
+    fn render(self, area: Rect, buf: &mut Buffer) {
+        let title = Line::from(" Counter App Tutorial ".bold());
+        let instructions = Line::from(vec![
+            " Decrement ".into(),
+            "<Left>".blue().bold(),
+            " Increment ".into(),
+            "<Right>".blue().bold(),
+            " Quit ".into(),
+            "<Q> ".blue().bold(),
+        ]);
+        let block = Block::bordered()
+            .title(title.centered())
+            .title_bottom(instructions.centered())
+            .border_set(border::THICK);
 
-    Some(Message::Key(key))
+        let counter_text = Text::from(vec![Line::from(vec![
+            "Value: ".into(),
+            self.counter.to_string().yellow(),
+        ])]);
+
+        Paragraph::new(counter_text)
+            .centered()
+            .block(block)
+            .render(area, buf);
+    }
 }
 
-fn keyboard_subscription(_state: &State) -> Subscription<Message> {
-    on_key_press(capture_key)
-}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ratatui::style::Style;
 
-fn update(state: &mut State, message: Message) {
-    match message {
-        Message::Key(key) => state.pressed_key = key,
-        Message::Mouse(point) => state.mouse_position = point,
-        Message::GenerateImage => {
-            let keys = vec![state.pressed_key.clone()];
-            let mouse = vec![state.mouse_position];
+    #[test]
+    fn render() {
+        let app = App::default();
+        let mut buf = Buffer::empty(Rect::new(0, 0, 50, 4));
 
-            state.image = Some(match &state.image {
-                Some(image_handle) => generate_frame(image_handle, keys, mouse),
-                None => generate_frame(
-                    &image::Handle::from_path("data/images/resized_images/image-0.png"),
-                    keys,
-                    mouse,
-                ),
-            })
-        }
-        Message::ModelTraining => {
-            thread::spawn(|| model_training::training::run());
-        }
-        Message::Record => {
-            thread::spawn(|| recorder::run());
-        }
-        // Message::VideoProcessing => {
-        //     thread::spawn(|| preprocessor::process_my_videos());
-        // }
-        Message::FramesProcessing => {
-            thread::spawn(|| preprocessor::process_my_images());
-        }
-        Message::ReloadImage => {
-            state.image = Some(image::Handle::from_path(
-                "data/images/resized_images/image-0.png",
-            ))
-        }
-        Message::WriteData => preprocessor::write_my_data(),
-        Message::CheckData => check_data(state),
-    };
-}
+        app.render(buf.area, &mut buf);
 
-fn theme(_state: &State) -> Theme {
-    Theme::GruvboxDark
-}
+        let mut expected = Buffer::with_lines(vec![
+            "┏━━━━━━━━━━━━━ Counter App Tutorial ━━━━━━━━━━━━━┓",
+            "┃                    Value: 0                    ┃",
+            "┃                                                ┃",
+            "┗━ Decrement <Left> Increment <Right> Quit <Q> ━━┛",
+        ]);
+        let title_style = Style::new().bold();
+        let counter_style = Style::new().yellow();
+        let key_style = Style::new().blue().bold();
+        expected.set_style(Rect::new(14, 0, 22, 1), title_style);
+        expected.set_style(Rect::new(28, 1, 1, 1), counter_style);
+        expected.set_style(Rect::new(13, 3, 6, 1), key_style);
+        expected.set_style(Rect::new(30, 3, 7, 1), key_style);
+        expected.set_style(Rect::new(43, 3, 4, 1), key_style);
 
-pub fn main() -> iced::Result {
-    iced::application("Генерация |>_<|", update, view)
-        .window_size(Size::new(800.0, 600.0))
-        .theme(theme)
-        .subscription(keyboard_subscription)
-        .run()
+        assert_eq!(buf, expected);
+    }
+
+    #[test]
+    fn handle_key_event() -> io::Result<()> {
+        let mut app = App::default();
+        app.handle_key_event(KeyCode::Right.into());
+        assert_eq!(app.counter, 1);
+
+        app.handle_key_event(KeyCode::Left.into());
+        assert_eq!(app.counter, 0);
+
+        let mut app = App::default();
+        app.handle_key_event(KeyCode::Char('q').into());
+        assert!(app.exit);
+
+        Ok(())
+    }
 }
