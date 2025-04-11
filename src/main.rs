@@ -10,17 +10,24 @@ use ratatui::{
     text::{Line, Text},
     widgets::{Block, Paragraph, Widget},
 };
+use ratatui_image::{StatefulImage, picker::Picker, protocol::StatefulProtocol};
 
-fn main() -> io::Result<()> {
+mod utils;
+
+fn main() -> color_eyre::Result<()> {
+    color_eyre::install()?;
+
     let mut terminal = ratatui::init();
-    let app_result = App::default().run(&mut terminal);
+
+    let _app_result = App::default().run(&mut terminal)?;
+
     ratatui::restore();
-    app_result
+
+    Ok(())
 }
 
 #[derive(Debug, Default)]
 pub struct App {
-    counter: u8,
     exit: bool,
 }
 
@@ -54,8 +61,9 @@ impl App {
     fn handle_key_event(&mut self, key_event: KeyEvent) {
         match key_event.code {
             KeyCode::Char('q') => self.exit(),
-            KeyCode::Left => self.decrement_counter(),
-            KeyCode::Right => self.increment_counter(),
+            KeyCode::Char('i') => self.inference(),
+            // KeyCode::Left => self.decrement_counter(),
+            // KeyCode::Right => self.increment_counter(),
             _ => {}
         }
     }
@@ -64,23 +72,27 @@ impl App {
         self.exit = true;
     }
 
-    fn increment_counter(&mut self) {
-        self.counter += 1;
+    fn inference(&mut self) {
+        todo!()
     }
 
-    fn decrement_counter(&mut self) {
-        self.counter -= 1;
-    }
+    // fn increment_counter(&mut self) {
+    //     self.counter += 1;
+    // }
+
+    // fn decrement_counter(&mut self) {
+    //     self.counter -= 1;
+    // }
 }
 
 impl Widget for &App {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let title = Line::from(" Counter App Tutorial ".bold());
+        let title = Line::from(" Diffusion Learner ".bold());
         let instructions = Line::from(vec![
-            " Decrement ".into(),
-            "<Left>".blue().bold(),
-            " Increment ".into(),
-            "<Right>".blue().bold(),
+            " Train ".into(),
+            "<T>".blue().bold(),
+            " Inference ".into(),
+            "<I>".blue().bold(),
             " Quit ".into(),
             "<Q> ".blue().bold(),
         ]);
@@ -89,61 +101,74 @@ impl Widget for &App {
             .title_bottom(instructions.centered())
             .border_set(border::THICK);
 
-        let counter_text = Text::from(vec![Line::from(vec![
-            "Value: ".into(),
-            self.counter.to_string().yellow(),
-        ])]);
+        // let test_image: image::DynamicImage = image::open("screenshots/image-1.png").unwrap();
 
-        Paragraph::new(counter_text)
-            .centered()
-            .block(block)
-            .render(area, buf);
+        // let picker = Picker::from_query_stdio().unwrap();
+
+        // picker.new_resize_protocol(test_image).render(area, buf);
+
+        // Paragraph::new(self.ascii_image.clone())
+        //     .centered()
+        //     .block(block)
+        //     .render(area, buf);
+
+        // let counter_text = Text::from(vec![Line::from(vec![
+        //     "Value: ".into(),
+        //     self.counter.to_string().yellow(),
+        // ])]);
+
+        // Paragraph::new(counter_text)
+        //     .centered()
+        //     .block(block)
+        //     .render(area, buf);
+
+        block.render(area, buf);
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use ratatui::style::Style;
+// #[cfg(test)]
+// mod tests {
+//     use super::*;
+//     use ratatui::style::Style;
 
-    #[test]
-    fn render() {
-        let app = App::default();
-        let mut buf = Buffer::empty(Rect::new(0, 0, 50, 4));
+//     #[test]
+//     fn render() {
+//         let app = App::default();
+//         let mut buf = Buffer::empty(Rect::new(0, 0, 50, 4));
 
-        app.render(buf.area, &mut buf);
+//         app.render(buf.area, &mut buf);
 
-        let mut expected = Buffer::with_lines(vec![
-            "┏━━━━━━━━━━━━━ Counter App Tutorial ━━━━━━━━━━━━━┓",
-            "┃                    Value: 0                    ┃",
-            "┃                                                ┃",
-            "┗━ Decrement <Left> Increment <Right> Quit <Q> ━━┛",
-        ]);
-        let title_style = Style::new().bold();
-        let counter_style = Style::new().yellow();
-        let key_style = Style::new().blue().bold();
-        expected.set_style(Rect::new(14, 0, 22, 1), title_style);
-        expected.set_style(Rect::new(28, 1, 1, 1), counter_style);
-        expected.set_style(Rect::new(13, 3, 6, 1), key_style);
-        expected.set_style(Rect::new(30, 3, 7, 1), key_style);
-        expected.set_style(Rect::new(43, 3, 4, 1), key_style);
+//         let mut expected = Buffer::with_lines(vec![
+//             "┏━━━━━━━━━━━━━━ Diffusion Learner ━━━━━━━━━━━━━━━┓",
+//             "┃                                                ┃",
+//             "┃                                                ┃",
+//             "┗━━━━━━━ Train <T> Inference <I> Quit <Q> ━━━━━━━┛",
+//         ]);
+//         let title_style = Style::new().bold();
+//         let counter_style = Style::new().yellow();
+//         let key_style = Style::new().blue().bold();
+//         expected.set_style(Rect::new(15, 0, 17, 1), title_style);
+//         // expected.set_style(Rect::new(28, 1, 1, 1), counter_style);
+//         expected.set_style(Rect::new(13, 3, 6, 1), key_style);
+//         expected.set_style(Rect::new(30, 3, 7, 1), key_style);
+//         expected.set_style(Rect::new(43, 3, 4, 1), key_style);
 
-        assert_eq!(buf, expected);
-    }
+//         assert_eq!(buf, expected);
+//     }
 
-    #[test]
-    fn handle_key_event() -> io::Result<()> {
-        let mut app = App::default();
-        app.handle_key_event(KeyCode::Right.into());
-        assert_eq!(app.counter, 1);
+//     #[test]
+//     fn handle_key_event() -> io::Result<()> {
+//         let mut app = App::default();
+//         app.handle_key_event(KeyCode::Right.into());
+//         assert_eq!(app.counter, 1);
 
-        app.handle_key_event(KeyCode::Left.into());
-        assert_eq!(app.counter, 0);
+//         app.handle_key_event(KeyCode::Left.into());
+//         assert_eq!(app.counter, 0);
 
-        let mut app = App::default();
-        app.handle_key_event(KeyCode::Char('q').into());
-        assert!(app.exit);
+//         let mut app = App::default();
+//         app.handle_key_event(KeyCode::Char('q').into());
+//         assert!(app.exit);
 
-        Ok(())
-    }
-}
+//         Ok(())
+//     }
+// }
