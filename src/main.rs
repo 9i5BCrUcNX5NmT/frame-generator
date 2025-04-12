@@ -19,6 +19,17 @@ fn main() -> color_eyre::Result<()> {
 
     let mut terminal = ratatui::init();
 
+    let test_image: image::DynamicImage = image::open("screenshots/image-1.png").unwrap();
+
+    // let terminal_size = terminal.size().unwrap();
+    // let picker = Picker::from_fontsize((terminal_size.height, terminal_size.width));
+
+    // let mut image = picker.new_resize_protocol(test_image);
+
+    // terminal.draw(|frame| {
+    //     frame.render_stateful_widget(StatefulImage::default(), frame.area(), &mut image)
+    // })?;
+
     let _app_result = App::default().run(&mut terminal)?;
 
     ratatui::restore();
@@ -62,8 +73,7 @@ impl App {
         match key_event.code {
             KeyCode::Char('q') => self.exit(),
             KeyCode::Char('i') => self.inference(),
-            // KeyCode::Left => self.decrement_counter(),
-            // KeyCode::Right => self.increment_counter(),
+            KeyCode::Char('t') => self.train(),
             _ => {}
         }
     }
@@ -76,13 +86,9 @@ impl App {
         todo!()
     }
 
-    // fn increment_counter(&mut self) {
-    //     self.counter += 1;
-    // }
-
-    // fn decrement_counter(&mut self) {
-    //     self.counter -= 1;
-    // }
+    fn train(&mut self) {
+        model_training::training::run();
+    }
 }
 
 impl Widget for &App {
@@ -100,12 +106,6 @@ impl Widget for &App {
             .title(title.centered())
             .title_bottom(instructions.centered())
             .border_set(border::THICK);
-
-        // let test_image: image::DynamicImage = image::open("screenshots/image-1.png").unwrap();
-
-        // let picker = Picker::from_query_stdio().unwrap();
-
-        // picker.new_resize_protocol(test_image).render(area, buf);
 
         // Paragraph::new(self.ascii_image.clone())
         //     .centered()
