@@ -8,7 +8,7 @@ use ratatui::{
     style::Stylize,
     symbols::border,
     text::{Line, Text},
-    widgets::{Block, Paragraph, Widget},
+    widgets::{Block, Borders, Paragraph, Widget},
 };
 use ratatui_image::{StatefulImage, picker::Picker, protocol::StatefulProtocol};
 
@@ -21,38 +21,41 @@ fn main() -> color_eyre::Result<()> {
 
     let test_image: image::DynamicImage = image::open("screenshots/image-1.png").unwrap();
 
-    // let terminal_size = terminal.size().unwrap();
-    // let picker = Picker::from_fontsize((terminal_size.height, terminal_size.width));
+    let picker = Picker::from_query_stdio().unwrap();
 
-    // let mut image = picker.new_resize_protocol(test_image);
+    let image = picker.new_resize_protocol(test_image);
 
-    // terminal.draw(|frame| {
-    //     frame.render_stateful_widget(StatefulImage::default(), frame.area(), &mut image)
-    // })?;
-
-    let _app_result = App::default().run(&mut terminal)?;
+    let _app_result = App { exit: false, image }.run(&mut terminal)?;
 
     ratatui::restore();
 
     Ok(())
 }
 
-#[derive(Debug, Default)]
 pub struct App {
     exit: bool,
+    image: StatefulProtocol,
 }
 
 impl App {
     /// runs the application's main loop until the user quits
     pub fn run(&mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
         while !self.exit {
-            terminal.draw(|frame| self.draw(frame))?;
+            terminal.draw(|frame| {
+                self.draw(frame);
+
+                let inner_area = Block::default()
+                    .borders(Borders::ALL)
+                    .title("image")
+                    .inner(frame.area());
+                frame.render_stateful_widget(StatefulImage::new(), inner_area, &mut self.image);
+            })?;
             self.handle_events()?;
         }
         Ok(())
     }
 
-    fn draw(&self, frame: &mut Frame) {
+    fn draw(&mut self, frame: &mut Frame) {
         frame.render_widget(self, frame.area());
     }
 
@@ -91,7 +94,7 @@ impl App {
     }
 }
 
-impl Widget for &App {
+impl Widget for &mut App {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let title = Line::from(" Diffusion Learner ".bold());
         let instructions = Line::from(vec![
@@ -107,20 +110,13 @@ impl Widget for &App {
             .title_bottom(instructions.centered())
             .border_set(border::THICK);
 
-        // Paragraph::new(self.ascii_image.clone())
+        // Paragraph::new("123")
         //     .centered()
         //     .block(block)
+        //     .block(image)
         //     .render(area, buf);
 
-        // let counter_text = Text::from(vec![Line::from(vec![
-        //     "Value: ".into(),
-        //     self.counter.to_string().yellow(),
-        // ])]);
-
-        // Paragraph::new(counter_text)
-        //     .centered()
-        //     .block(block)
-        //     .render(area, buf);
+        // self.image.render(area, buf);
 
         block.render(area, buf);
     }
