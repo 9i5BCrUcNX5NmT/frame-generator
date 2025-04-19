@@ -27,7 +27,8 @@ fn main() -> color_eyre::Result<()> {
     };
 
     let first_image = image::open(image_path).unwrap();
-    let picker = Picker::from_query_stdio().unwrap();
+    let picker = Picker::from_query_stdio()
+        .expect("Поддержка протокола считывания размера шрифта из терминала(среды запуска)");
     let image = picker.new_resize_protocol(first_image.clone());
 
     let _app_result = App {
