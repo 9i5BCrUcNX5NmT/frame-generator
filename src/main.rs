@@ -8,11 +8,11 @@ use ratatui::{
     layout::Rect,
     style::Stylize,
     symbols::border,
-    text::{Line, Text},
-    widgets::{Block, Borders, Paragraph, Widget},
+    text::Line,
+    widgets::{Block, Borders, Widget},
 };
 use ratatui_image::{StatefulImage, picker::Picker, protocol::StatefulProtocol};
-use utils::{generate_frame, get_first_file_in_directory};
+use utils::get_first_file_in_directory;
 
 mod utils;
 
@@ -99,7 +99,8 @@ impl App {
     }
 
     fn inference(&mut self) {
-        let generated_image = generate_frame(self.dynamic_image.clone());
+        let generated_image =
+            model_training::inference::generate(&self.dynamic_image.clone(), vec![], vec![]); // TODO: считывание клавиш и мыши
         self.image = self.picker.new_resize_protocol(generated_image);
     }
 
@@ -124,61 +125,6 @@ impl Widget for &mut App {
             .title_bottom(instructions.centered())
             .border_set(border::THICK);
 
-        // Paragraph::new("123")
-        //     .centered()
-        //     .block(block)
-        //     .block(image)
-        //     .render(area, buf);
-
-        // self.image.render(area, buf);
-
         block.render(area, buf);
     }
 }
-
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//     use ratatui::style::Style;
-
-//     #[test]
-//     fn render() {
-//         let app = App::default();
-//         let mut buf = Buffer::empty(Rect::new(0, 0, 50, 4));
-
-//         app.render(buf.area, &mut buf);
-
-//         let mut expected = Buffer::with_lines(vec![
-//             "┏━━━━━━━━━━━━━━ Diffusion Learner ━━━━━━━━━━━━━━━┓",
-//             "┃                                                ┃",
-//             "┃                                                ┃",
-//             "┗━━━━━━━ Train <T> Inference <I> Quit <Q> ━━━━━━━┛",
-//         ]);
-//         let title_style = Style::new().bold();
-//         let counter_style = Style::new().yellow();
-//         let key_style = Style::new().blue().bold();
-//         expected.set_style(Rect::new(15, 0, 17, 1), title_style);
-//         // expected.set_style(Rect::new(28, 1, 1, 1), counter_style);
-//         expected.set_style(Rect::new(13, 3, 6, 1), key_style);
-//         expected.set_style(Rect::new(30, 3, 7, 1), key_style);
-//         expected.set_style(Rect::new(43, 3, 4, 1), key_style);
-
-//         assert_eq!(buf, expected);
-//     }
-
-//     #[test]
-//     fn handle_key_event() -> io::Result<()> {
-//         let mut app = App::default();
-//         app.handle_key_event(KeyCode::Right.into());
-//         assert_eq!(app.counter, 1);
-
-//         app.handle_key_event(KeyCode::Left.into());
-//         assert_eq!(app.counter, 0);
-
-//         let mut app = App::default();
-//         app.handle_key_event(KeyCode::Char('q').into());
-//         assert!(app.exit);
-
-//         Ok(())
-//     }
-// }
