@@ -1,4 +1,4 @@
-use std::io;
+use std::{io, path::PathBuf, str::FromStr};
 
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
 use image::DynamicImage;
@@ -21,9 +21,12 @@ fn main() -> color_eyre::Result<()> {
 
     let mut terminal = ratatui::init();
 
-    let image_path = match get_first_file_in_directory("data/images/resized_images").unwrap() {
-        Some(image_path) => image_path,
-        None => panic!("Отсутствуют файлы в resized_images"),
+    let image_path = match get_first_file_in_directory("data/images/resized_images") {
+        Ok(resized_dir) => match resized_dir {
+            Some(image_path) => image_path,
+            None => panic!("Отсутствуют файлы в resized_images"),
+        },
+        Err(_) => PathBuf::from_str("screenshots/image-1.png").unwrap(),
     };
 
     let first_image = image::open(image_path).unwrap();
@@ -62,7 +65,7 @@ impl App {
                     .borders(Borders::ALL)
                     .title("image")
                     .inner(frame.area());
-                frame.render_stateful_widget(StatefulImage::default(), inner_area, &mut self.image);
+                frame.render_stateful_widget(StatefulImage::new(), inner_area, &mut self.image);
             })?;
             self.handle_events()?;
         }
@@ -91,6 +94,8 @@ impl App {
             KeyCode::Char('q') => self.exit(),
             KeyCode::Char('i') => self.inference(),
             KeyCode::Char('t') => self.train(),
+            KeyCode::Char('p') => self.preprocess(),
+            KeyCode::Char('r') => self.record(),
             _ => {}
         }
     }
@@ -108,6 +113,15 @@ impl App {
     fn train(&mut self) {
         model_training::training::run();
     }
+
+    fn preprocess(&mut self) {
+        preprocessor::process_my_images();
+        preprocessor::write_my_data();
+    }
+
+    fn record(&mut self) {
+        recorder::run();
+    }
 }
 
 impl Widget for &mut App {
@@ -118,6 +132,10 @@ impl Widget for &mut App {
             "<T>".blue().bold(),
             " Inference ".into(),
             "<I>".blue().bold(),
+            " Record ".into(),
+            "<R>".blue().bold(),
+            " Preprocess ".into(),
+            "<P>".blue().bold(),
             " Quit ".into(),
             "<Q> ".blue().bold(),
         ]);
