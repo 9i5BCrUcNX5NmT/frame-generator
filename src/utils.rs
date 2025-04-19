@@ -325,100 +325,105 @@
 //     }
 // }
 
-// pub fn generate_frame(
-//     image_handle: &image::Handle,
-//     keys: Vec<String>,
-//     mouse: Vec<Point>,
-// ) -> image::Handle {
-//     let current_image = match image_handle {
-//         image::Handle::Path(id, path_buf) => {
-//             open(path_buf).expect("Failed to open image").to_rgba8()
-//         }
-//         image::Handle::Bytes(id, bytes) => {
-//             RgbaImage::from_raw(WIDTH as u32, HEIGHT as u32, bytes.to_vec()).unwrap()
-//         }
-//         // image::Handle::Rgba {
-//         //     id,
-//         //     width,
-//         //     height,
-//         //     pixels,
-//         // } => {
-//         //     let mut image = DynamicImage::new_rgba8(*width, *height);
+use image::DynamicImage;
 
-//         //     let mut t = 0;
+pub fn generate_frame(
+    dynamic_image: DynamicImage,
+    // keys: Vec<String>,
+    // mouse: Vec<Point>, // TODO: считывание клавиш и мыши
+) -> DynamicImage {
+    // let current_image = match image_handle {
+    //     image::Handle::Path(id, path_buf) => {
+    //         open(path_buf).expect("Failed to open image").to_rgba8()
+    //     }
+    //     image::Handle::Bytes(id, bytes) => {
+    //         RgbaImage::from_raw(WIDTH as u32, HEIGHT as u32, bytes.to_vec()).unwrap()
+    //     }
+    //     // image::Handle::Rgba {
+    //     //     id,
+    //     //     width,
+    //     //     height,
+    //     //     pixels,
+    //     // } => {
+    //     //     let mut image = DynamicImage::new_rgba8(*width, *height);
 
-//         //     for i in 0..*height {
-//         //         for j in 0..*width {
-//         //             let pixel = Rgba([pixels[t], pixels[t + 1], pixels[t + 2], pixels[t + 3]]);
+    //     //     let mut t = 0;
 
-//         //             t += 4;
+    //     //     for i in 0..*height {
+    //     //         for j in 0..*width {
+    //     //             let pixel = Rgba([pixels[t], pixels[t + 1], pixels[t + 2], pixels[t + 3]]);
 
-//         //             image.put_pixel(j, i, pixel);
-//         //         }
-//         //     }
+    //     //             t += 4;
 
-//         //     image
-//         // }
-//         image::Handle::Rgba {
-//             id,
-//             width,
-//             height,
-//             pixels,
-//         } => {
-//             // let mut image = RgbaImage::new(*width, *height);
+    //     //             image.put_pixel(j, i, pixel);
+    //     //         }
+    //     //     }
 
-//             // let mut t = 0;
+    //     //     image
+    //     // }
+    //     image::Handle::Rgba {
+    //         id,
+    //         width,
+    //         height,
+    //         pixels,
+    //     } => {
+    //         // let mut image = RgbaImage::new(*width, *height);
 
-//             // for i in 0..*width {
-//             //     for j in 0..*height {
-//             //         let pixel = Rgba([pixels[t], pixels[t + 1], pixels[t + 2], pixels[t + 3]]); // ?
+    //         // let mut t = 0;
 
-//             //         t += 4;
+    //         // for i in 0..*width {
+    //         //     for j in 0..*height {
+    //         //         let pixel = Rgba([pixels[t], pixels[t + 1], pixels[t + 2], pixels[t + 3]]); // ?
 
-//             //         image.put_pixel(i, j, pixel);
-//             //     }
-//             // }
+    //         //         t += 4;
 
-//             // image
+    //         //         image.put_pixel(i, j, pixel);
+    //         //     }
+    //         // }
 
-//             RgbaImage::from_vec(*width, *height, pixels.to_vec()).unwrap()
-//         }
-//     };
+    //         // image
 
-//     let dimage = DynamicImage::from(current_image.clone());
-//     // save_image(&dimage, &PathBuf::from_str("tmp/image.png").unwrap());
+    //         RgbaImage::from_vec(*width, *height, pixels.to_vec()).unwrap()
+    //     }
+    // };
 
-//     let mouse = mouse
-//         .iter()
-//         .map(|p| [(p.x * 2.0) as i32, (p.y * 2.0) as i32]) // 0.0, 0.5, 1.0, 1.5 ... => 0, 1, 2, 3 ...
-//         .collect();
+    // let dimage = DynamicImage::from(current_image.clone());
+    // save_image(&dimage, &PathBuf::from_str("tmp/image.png").unwrap());
 
-//     let image: RgbaImage = model_training::inference::generate(&dimage, keys, mouse).to_rgba8();
+    // let mouse = mouse
+    //     .iter()
+    //     .map(|p| [(p.x * 2.0) as i32, (p.y * 2.0) as i32]) // 0.0, 0.5, 1.0, 1.5 ... => 0, 1, 2, 3 ...
+    //     .collect();
 
-//     // let pixels: Vec<(u32, u32, Rgba<u8>)> = image
-//     //     .pixels()
-//     //     .map(|(h, w, pixel)| {
-//     //         (
-//     //             h,
-//     //             w,
-//     //             Rgba {
-//     //                 0: [pixel.0[0], pixel.0[1], pixel.0[2], 255],
-//     //             },
-//     //         )
-//     //     })
-//     //     .collect();
+    let generated_image: DynamicImage =
+        model_training::inference::generate(&dynamic_image, vec![], vec![]);
 
-//     // save_image(
-//     //     &DynamicImage::from(image.clone()),
-//     //     &PathBuf::from_str("tmp/image.png").unwrap(),
-//     // );
+    generated_image
 
-//     image::Handle::from_rgba(image.width(), image.height(), image.into_vec())
+    // let pixels: Vec<(u32, u32, Rgba<u8>)> = image
+    //     .pixels()
+    //     .map(|(h, w, pixel)| {
+    //         (
+    //             h,
+    //             w,
+    //             Rgba {
+    //                 0: [pixel.0[0], pixel.0[1], pixel.0[2], 255],
+    //             },
+    //         )
+    //     })
+    //     .collect();
 
-//     // image::Handle::from_bytes(image.into_byte_slice())
+    // save_image(
+    //     &DynamicImage::from(image.clone()),
+    //     &PathBuf::from_str("tmp/image.png").unwrap(),
+    // );
 
-//     // image::Handle::from_path("tmp/image.png")
-// }
+    // image::Handle::from_rgba(image.width(), image.height(), image.into_vec())
+
+    // image::Handle::from_bytes(image.into_byte_slice())
+
+    // image::Handle::from_path("tmp/image.png")
+}
 
 // #[derive(Default)]
 // pub struct DataStatus {
@@ -464,3 +469,19 @@
 //         Err(_) => false,
 //     }
 // }
+
+pub fn get_first_file_in_directory(dir_path: &str) -> std::io::Result<Option<std::path::PathBuf>> {
+    let path = std::path::Path::new(dir_path);
+    let entries = std::fs::read_dir(path)?;
+
+    for entry in entries {
+        let entry = entry?;
+        let file_type = entry.file_type()?;
+
+        if file_type.is_file() {
+            return Ok(Some(entry.path()));
+        }
+    }
+
+    Ok(None) // Если файлов нет, возвращаем None
+}

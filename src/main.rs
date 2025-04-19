@@ -1,6 +1,7 @@
 use std::io;
 
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
+use image::DynamicImage;
 use ratatui::{
     DefaultTerminal, Frame,
     buffer::Buffer,
@@ -11,6 +12,7 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph, Widget},
 };
 use ratatui_image::{StatefulImage, picker::Picker, protocol::StatefulProtocol};
+use utils::{generate_frame, get_first_file_in_directory};
 
 mod utils;
 
@@ -19,13 +21,22 @@ fn main() -> color_eyre::Result<()> {
 
     let mut terminal = ratatui::init();
 
-    let test_image: image::DynamicImage = image::open("screenshots/image-1.png").unwrap();
+    let image_path = match get_first_file_in_directory("data/images/resized_images").unwrap() {
+        Some(image_path) => image_path,
+        None => panic!("Отсутствуют файлы в resized_images"),
+    };
 
+    let first_image = image::open(image_path).unwrap();
     let picker = Picker::from_query_stdio().unwrap();
+    let image = picker.new_resize_protocol(first_image.clone());
 
-    let image = picker.new_resize_protocol(test_image);
-
-    let _app_result = App { exit: false, image }.run(&mut terminal)?;
+    let _app_result = App {
+        exit: false,
+        image,
+        picker,
+        dynamic_image: first_image,
+    }
+    .run(&mut terminal)?;
 
     ratatui::restore();
 
@@ -35,6 +46,8 @@ fn main() -> color_eyre::Result<()> {
 pub struct App {
     exit: bool,
     image: StatefulProtocol,
+    picker: Picker,
+    dynamic_image: DynamicImage,
 }
 
 impl App {
@@ -48,7 +61,7 @@ impl App {
                     .borders(Borders::ALL)
                     .title("image")
                     .inner(frame.area());
-                frame.render_stateful_widget(StatefulImage::new(), inner_area, &mut self.image);
+                frame.render_stateful_widget(StatefulImage::default(), inner_area, &mut self.image);
             })?;
             self.handle_events()?;
         }
@@ -86,7 +99,8 @@ impl App {
     }
 
     fn inference(&mut self) {
-        todo!()
+        let generated_image = generate_frame(self.dynamic_image.clone());
+        self.image = self.picker.new_resize_protocol(generated_image);
     }
 
     fn train(&mut self) {
