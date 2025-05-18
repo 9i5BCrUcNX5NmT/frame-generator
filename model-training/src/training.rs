@@ -1,22 +1,14 @@
 use std::{path::PathBuf, str::FromStr};
 
-use crate::{
-    data::FrameBatcher,
-    models::{
-        model_v1::model::{ModelV1, ModelV1Config},
-        unets::base_unet::model::BaseUNetConfig,
-        wgan::model::WganDecoderConfig,
-    },
-};
+use crate::{data::FrameBatcher, models::model_v1::model::ModelV1Config};
 
 use burn::{
     backend::{self, Autodiff},
     data::{dataloader::DataLoaderBuilder, dataset::InMemDataset},
-    nn::loss::{MseLoss, Reduction},
-    optim::{AdamConfig, GradientsParams, Optimizer},
+    optim::AdamConfig,
     prelude::*,
     record::CompactRecorder,
-    tensor::{activation::sigmoid, backend::AutodiffBackend},
+    tensor::backend::AutodiffBackend,
     train::{LearnerBuilder, metric::LossMetric},
 };
 
@@ -81,65 +73,6 @@ fn train<B: AutodiffBackend>(artifact_dir: &str, config: TrainingConfig, device:
         .num_workers(config.num_workers)
         .build(dataset_test);
 
-    // // My
-    // let mut model = config.model.init(&device);
-
-    // let mut optimizer = config.optimizer.init();
-
-    // for epoch in 1..config.num_epochs + 1 {
-    //     for (iteration, batch) in dataloader_train.iter().enumerate() {
-    //         // base diffusion train
-    //         let random_timestamps = Tensor::<B, 1>::random(
-    //             [batch.images.dims()[0]],
-    //             burn::tensor::Distribution::Normal(0.0, 1.0),
-    //             &device,
-    //         );
-
-    //         let alpha_timestamps = sigmoid(random_timestamps.clone())
-    //             .sqrt()
-    //             .reshape([-1, 1, 1, 1]);
-    //         let sigma_timestamps = sigmoid(-random_timestamps.clone())
-    //             .sqrt()
-    //             .reshape([-1, 1, 1, 1]);
-
-    //         let noise = batch
-    //             .images
-    //             .random_like(burn::tensor::Distribution::Default);
-    //         let noised_images = batch.images * alpha_timestamps + noise.clone() * sigma_timestamps;
-    //         // let noised_images = diffuse(batch.images.clone(), alpha_timestamps, sigma_timestamps);
-
-    //         let predict = model.forward(
-    //             noised_images.clone(),
-    //             batch.keys.clone(),
-    //             batch.mouse.clone(),
-    //             random_timestamps.clone(),
-    //         );
-
-    //         // let snr = random_timestamps.exp().clamp_max(5);
-    //         // let weight = snr.recip().reshape([-1, 1, 1, 1]);
-
-    //         let loss = MseLoss::new().forward(predict, noise, Reduction::Auto); // TODO: Mean or Sum?
-
-    //         println!(
-    //             "[Train - Epoch {} - Iteration {}] Loss {:.3}",
-    //             epoch,
-    //             iteration,
-    //             loss.clone().into_scalar(),
-    //         );
-
-    //         let grads = loss.backward();
-    //         let grads = GradientsParams::from_grads(grads, &model);
-    //         model = optimizer.step(config.learning_rate, model, grads);
-    //     }
-
-    //     println!("\nEpoch: {}\n", epoch);
-    // }
-
-    // model
-    //     .save_file(format!("{artifact_dir}/model"), &CompactRecorder::new())
-    //     .expect("Trained model should be saved successfully");
-    // println!("Model is save");
-
     let learner = LearnerBuilder::new(artifact_dir)
         .metric_train_numeric(LossMetric::new())
         .metric_valid_numeric(LossMetric::new())
@@ -188,9 +121,9 @@ pub fn run() {
     let device = backend::wgpu::WgpuDevice::default();
 
     #[cfg(feature = "cuda")]
-    type MyBackend = backend::CudaJit<f32, i32>;
+    type MyBackend = backend::Cuda<f32, i32>;
     #[cfg(feature = "cuda")]
-    let device = backend::cuda_jit::CudaDevice::default();
+    let device = backend::cuda::CudaDevice::default();
 
     type MyAutodiffBackend = Autodiff<MyBackend>;
 

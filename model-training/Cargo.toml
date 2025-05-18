@@ -15,4 +15,4 @@ preprocessor = { path = "../preprocessor" }
 [features]
 default = []
 wgpu = ["burn/wgpu"]
-cuda = ["burn/cuda-jit"]
+cuda = ["burn/cuda"]

@@ -95,8 +95,8 @@ pub struct FrameBatch<B: Backend> {
     pub targets: Tensor<B, 4>,
 }
 
-impl<B: Backend> Batcher<MyConstData, FrameBatch<B>> for FrameBatcher<B> {
-    fn batch(&self, mydata: Vec<MyConstData>) -> FrameBatch<B> {
+impl<B: Backend> Batcher<B, MyConstData, FrameBatch<B>> for FrameBatcher<B> {
+    fn batch(&self, mydata: Vec<MyConstData>, device: &Device<B>) -> FrameBatch<B> {
         let images = self.extract_const_images(&mydata);
         let keys = self.extract_const_keys(&mydata);
         let mouse = self.extract_const_mouse(&mydata);

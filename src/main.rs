@@ -84,7 +84,7 @@ impl App {
             Event::Key(key_event) if key_event.kind == KeyEventKind::Press => {
                 self.handle_key_event(key_event)
             }
-            _ => {}
+            _ => {},
         };
         Ok(())
     }

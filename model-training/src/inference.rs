@@ -1,5 +1,3 @@
-use std::{path::PathBuf, str::FromStr};
-
 use burn::{
     backend,
     config::Config,
@@ -33,22 +31,7 @@ fn infer<B: Backend>(
     let model = config.model.init::<B>(&device).load_record(record);
 
     let batcher = FrameBatcher::new(device.clone());
-    let batch = batcher.batch(vec![item]);
-
-    // let mut output = model.forward(
-    //     batch.images,
-    //     batch.keys.clone(),
-    //     batch.mouse.clone(),
-    //     Tensor::zeros([1], &device),
-    // );
-    // for timestamp in 1..config.model.num_timestamps {
-    //     output = model.forward(
-    //         output,
-    //         batch.keys.clone(),
-    //         batch.mouse.clone(),
-    //         Tensor::from_data(TensorData::new(vec![timestamp as f32], [1]), &device),
-    //     );
-    // }
+    let batch = batcher.batch(vec![item], &device);
 
     let noise = batch
         .images
@@ -61,17 +44,15 @@ fn infer<B: Backend>(
         noise,
     );
     let output = batch.images * 0.9 + output * 0.1;
-    // let output: Tensor<B, 4> = batch.images;
 
-    // let images: Vec<MyImage<HEIGHT, WIDTH>>
     let images = output
         .iter_dim(0)
         // Возвращение из нормализации
         // .map(|tensor| tensor * 255)
-        .map(|tensor| tensor.to_data())
-        .map(|data| data.to_vec().unwrap())
+        .map(&mut |tensor: Tensor<B, 4>| tensor.to_data())
+        .map(&mut |data: burn::prelude::TensorData| data.to_vec().unwrap())
         // .map(|vector| vector.iter().map(|v| *v as u8).collect())
-        .map(|vector| {
+        .map(&mut |vector| {
             let image = Rgba32FImage::from_vec(WIDTH as u32, HEIGHT as u32, vector).unwrap();
 
             DynamicImage::from(image)
@@ -103,9 +84,9 @@ pub fn generate(
     let device = backend::wgpu::WgpuDevice::default();
 
     #[cfg(feature = "cuda")]
-    type MyBackend = backend::CudaJit<f32, i32>;
+    type MyBackend = backend::Cuda<f32, i32>;
     #[cfg(feature = "cuda")]
-    let device = backend::cuda_jit::CudaDevice::default();
+    let device = backend::cuda::CudaDevice::default();
 
     let my_image: MyImage<HEIGHT, WIDTH, CHANNELS> = MyImage::from_image(current_image);
 
