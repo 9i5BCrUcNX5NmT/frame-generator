@@ -1,5 +1,5 @@
 use burn::{
-    nn::{BatchNorm, Linear, LinearConfig, Relu, Sigmoid},
+    nn::{Linear, LinearConfig, Relu},
     prelude::*,
 };
 
@@ -37,7 +37,7 @@ impl<B: Backend> ConditionalBlock<B> {
         let shape = x.shape();
         let x: Tensor<B, 2> = x.flatten(1, 3);
 
-        let x = self.linear1.forward(x);
+        let x = self.linear1.forward(x); // TODO: ошибка здест ERROR
         let x = self.activation.forward(x);
         let x = self.linear2.forward(x);
 
