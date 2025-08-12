@@ -44,8 +44,7 @@ pub struct BaseUNet<B: Backend> {
     act9: Relu,
     conv10: Conv2d<B>,
     act10: Relu,
-
-    out_conv: AdaptiveAvgPool2d,
+    // out_conv: AdaptiveAvgPool2d,
 }
 
 #[derive(Config, Debug)]
@@ -62,25 +61,34 @@ pub struct BaseUNetConfig {
 impl BaseUNetConfig {
     pub fn init<B: Backend>(&self, device: &B::Device) -> BaseUNet<B> {
         BaseUNet {
-            conv1: Conv2dConfig::new([CHANNELS, self.hidden_dim], [3, 3]).init(device),
+            conv1: Conv2dConfig::new([CHANNELS, self.hidden_dim], [3, 3])
+                .with_padding(nn::PaddingConfig2d::Same)
+                .init(device),
             act1: Relu,
-            conv2: Conv2dConfig::new([self.hidden_dim, self.hidden_dim], [3, 3]).init(device),
+            conv2: Conv2dConfig::new([self.hidden_dim, self.hidden_dim], [3, 3])
+                .with_padding(nn::PaddingConfig2d::Same)
+                .init(device),
             act2: Relu,
 
             down1: MaxPool2dConfig::new([2, 2]).with_strides([2, 2]).init(),
 
-            conv3: Conv2dConfig::new([self.hidden_dim, self.hidden_dim * 2], [3, 3]).init(device),
+            conv3: Conv2dConfig::new([self.hidden_dim, self.hidden_dim * 2], [3, 3])
+                .with_padding(nn::PaddingConfig2d::Same)
+                .init(device),
             act3: Relu,
             conv4: Conv2dConfig::new([self.hidden_dim * 2, self.hidden_dim * 2], [3, 3])
+                .with_padding(nn::PaddingConfig2d::Same)
                 .init(device),
             act4: Relu,
 
             down2: MaxPool2dConfig::new([2, 2]).with_strides([2, 2]).init(),
 
             conv5: Conv2dConfig::new([self.hidden_dim * 2, self.hidden_dim * 4], [3, 3])
+                .with_padding(nn::PaddingConfig2d::Same)
                 .init(device),
             act5: Relu,
             conv6: Conv2dConfig::new([self.hidden_dim * 4, self.hidden_dim * 4], [3, 3])
+                .with_padding(nn::PaddingConfig2d::Same)
                 .init(device),
             act6: Relu,
 
@@ -89,9 +97,11 @@ impl BaseUNetConfig {
                 .init(device),
 
             conv7: Conv2dConfig::new([self.hidden_dim * 4, self.hidden_dim * 2], [3, 3])
+                .with_padding(nn::PaddingConfig2d::Same)
                 .init(device),
             act7: Relu,
             conv8: Conv2dConfig::new([self.hidden_dim * 2, self.hidden_dim * 2], [3, 3])
+                .with_padding(nn::PaddingConfig2d::Same)
                 .init(device),
             act8: Relu,
 
@@ -99,12 +109,15 @@ impl BaseUNetConfig {
                 .with_stride([2, 2])
                 .init(device),
 
-            conv9: Conv2dConfig::new([self.hidden_dim * 2, self.hidden_dim], [3, 3]).init(device),
+            conv9: Conv2dConfig::new([self.hidden_dim * 2, self.hidden_dim], [3, 3])
+                .with_padding(nn::PaddingConfig2d::Same)
+                .init(device),
             act9: Relu,
-            conv10: Conv2dConfig::new([self.hidden_dim, CHANNELS], [3, 3]).init(device),
+            conv10: Conv2dConfig::new([self.hidden_dim, CHANNELS], [3, 3])
+                .with_padding(nn::PaddingConfig2d::Same)
+                .init(device),
             act10: Relu,
-
-            out_conv: AdaptiveAvgPool2dConfig::new([HEIGHT, WIDTH]).init(),
+            // out_conv: AdaptiveAvgPool2dConfig::new([HEIGHT, WIDTH]).init(),
         }
     }
 }
@@ -210,7 +223,7 @@ impl<B: Backend> BaseUNet<B> {
         let x = self.conv10.forward(x);
         let x = self.act10.forward(x);
 
-        let x = self.out_conv.forward(x);
+        // let x = self.out_conv.forward(x);
 
         x
     }

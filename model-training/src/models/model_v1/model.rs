@@ -37,6 +37,14 @@ impl<B: Backend> ConditionalBlock<B> {
         let shape = x.shape();
         let x: Tensor<B, 2> = x.flatten(1, 3);
 
+        // panic!(
+        //     "{:?} {:?} {} {}",
+        //     shape,
+        //     x.dims(),
+        //     self.linear1,
+        //     CHANNELS * HEIGHT * WIDTH
+        // );
+
         let x = self.linear1.forward(x); // TODO: ошибка здест ERROR
         let x = self.activation.forward(x);
         let x = self.linear2.forward(x);
@@ -92,12 +100,13 @@ impl<B: Backend> ModelV1<B> {
         let keys_emb = self.keys_embedder.forward(keys); // [b, embed_dim]
 
         // обрабатываем доп информацию
-        let conditional = self.conditional.forward(next_noise);
-
         let embed: Tensor<B, 3> = Tensor::cat(
             vec![mouse_emb.unsqueeze_dim(1), keys_emb.unsqueeze_dim(1)],
             2,
         ); // [b, 2, embed_dim]
+
+        let conditional = self.conditional.forward(next_noise);
+
         let embed: Tensor<B, 2> = embed.flatten(1, 2); // [b, embed_dim * 2]
 
         let [_, embedding_dim] = embed.dims();
@@ -108,8 +117,8 @@ impl<B: Backend> ModelV1<B> {
         let conditional = Tensor::cat(vec![conditional, embed_map], 1); // [b, embed_dim * 2, ...]
 
         // Message:  Dimensions are incompatible for matrix multiplication.
-        // let x = self.unet.forward(images, conditional); // TODO: как то изменеить unet((
-        let x = images.clone();
+        let x = self.unet.forward(images, conditional); // TODO: как то изменеить unet((
+        // let x = images.clone();
 
         let x = x.reshape([batch_size, channels, height, width]);
 
