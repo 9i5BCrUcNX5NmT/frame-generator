@@ -1,7 +1,7 @@
-cargo-features = ["codegen-backend"]
+# cargo-features = ["codegen-backend"]
 
-[profile.dev]
-codegen-backend = "cranelift"
+# [profile.dev]
+# codegen-backend = "cranelift"
 
 [package]
 name = "ui"
@@ -35,4 +35,4 @@ members = [""]
 # members = ["common", "model-training", "preprocessor", "recorder"]
 
 [workspace.dependencies]
-burn = { version = "0.17.1" }
+burn = { version = "0.18.0" }

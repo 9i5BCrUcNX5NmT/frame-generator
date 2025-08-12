@@ -85,6 +85,8 @@ impl<B: Backend> ModelV1<B> {
         mouse: Tensor<B, 3>,
         next_noise: Tensor<B, 4>, // conditional layers || Зашумлённый следующий кадр при тренировке или случайный шум при генерации
     ) -> Tensor<B, 4> {
+        let [batch_size, channels, height, width] = images.dims();
+
         // Получаем эмбеддинги
         let mouse_emb = self.mouse_embedder.forward(mouse); // [b, embed_dim]
         let keys_emb = self.keys_embedder.forward(keys); // [b, embed_dim]
@@ -98,7 +100,6 @@ impl<B: Backend> ModelV1<B> {
         ); // [b, 2, embed_dim]
         let embed: Tensor<B, 2> = embed.flatten(1, 2); // [b, embed_dim * 2]
 
-        let [batch_size, channels, height, width] = images.dims();
         let [_, embedding_dim] = embed.dims();
 
         let embed_map = embed.unsqueeze_dims::<4>(&[2, 3]); // [embed_dim, 1, 1]
@@ -106,7 +107,9 @@ impl<B: Backend> ModelV1<B> {
 
         let conditional = Tensor::cat(vec![conditional, embed_map], 1); // [b, embed_dim * 2, ...]
 
-        let x = self.unet.forward(images, conditional);
+        // Message:  Dimensions are incompatible for matrix multiplication.
+        // let x = self.unet.forward(images, conditional); // TODO: как то изменеить unet((
+        let x = images.clone();
 
         let x = x.reshape([batch_size, channels, height, width]);
 
