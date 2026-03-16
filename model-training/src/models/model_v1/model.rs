@@ -6,7 +6,10 @@ use burn::{
 use common::*;
 
 use crate::models::{
-    embedders::{KeyboardEmbedder, KeyboardEmbedderConfig, MouseEmbedder, MouseEmbedderConfig},
+    embedders::{
+        KeyboardEmbedder, KeyboardEmbedderConfig, MouseEmbedder, MouseEmbedderConfig,
+        TimestepEmbedder, TimestepEmbedderConfig,
+    },
     unets::base_unet::model::{BaseUNet, BaseUNetConfig},
 };
 
@@ -59,6 +62,7 @@ impl<B: Backend> ConditionalBlock<B> {
 pub struct ModelV1<B: Backend> {
     mouse_embedder: MouseEmbedder<B>,
     keys_embedder: KeyboardEmbedder<B>,
+    timestep_embedder: TimestepEmbedder<B>,
 
     // обработка дополнительной информации
     conditional: ConditionalBlock<B>,
@@ -77,10 +81,14 @@ impl ModelV1Config {
         ModelV1 {
             mouse_embedder: MouseEmbedderConfig::new(self.embed_dim, self.embed_dim).init(device),
             keys_embedder: KeyboardEmbedderConfig::new(self.embed_dim, self.embed_dim).init(device),
+            timestep_embedder: TimestepEmbedderConfig::new(self.embed_dim).init(device),
 
             conditional: ConditionalBlockConfig::new(CHANNELS * HEIGHT * WIDTH).init(device),
 
-            unet: BaseUNetConfig::new(self.embed_dim).init(device),
+            unet: BaseUNetConfig::new()
+                .with_embed_dim(self.embed_dim)
+                .with_conditional_dim(self.embed_dim * 2)
+                .init(device),
         }
     }
 }
@@ -92,29 +100,35 @@ impl<B: Backend> ModelV1<B> {
         keys: Tensor<B, 2>,
         mouse: Tensor<B, 3>,
         next_noise: Tensor<B, 4>, // conditional layers || Зашумлённый следующий кадр при тренировке или случайный шум при генерации
+        timestep: Tensor<B, 1>,   // Timestep for diffusion
     ) -> Tensor<B, 4> {
         let [batch_size, channels, height, width] = images.dims();
 
         // Получаем эмбеддинги
         let mouse_emb = self.mouse_embedder.forward(mouse); // [b, embed_dim]
         let keys_emb = self.keys_embedder.forward(keys); // [b, embed_dim]
+        let time_emb = self.timestep_embedder.forward(timestep); // [b, embed_dim]
 
         // обрабатываем доп информацию
         let embed: Tensor<B, 3> = Tensor::cat(
-            vec![mouse_emb.unsqueeze_dim(1), keys_emb.unsqueeze_dim(1)],
+            vec![
+                mouse_emb.unsqueeze_dim(1),
+                keys_emb.unsqueeze_dim(1),
+                time_emb.unsqueeze_dim(1),
+            ],
             2,
-        ); // [b, 2, embed_dim]
+        ); // [b, 3, embed_dim]
 
         let conditional = self.conditional.forward(next_noise);
 
-        let embed: Tensor<B, 2> = embed.flatten(1, 2); // [b, embed_dim * 2]
+        let embed: Tensor<B, 2> = embed.flatten(1, 2); // [b, embed_dim * 3]
 
         let [_, embedding_dim] = embed.dims();
 
         let embed_map = embed.unsqueeze_dims::<4>(&[2, 3]); // [embed_dim, 1, 1]
         let embed_map = embed_map.expand([batch_size, embedding_dim, height, width]); // [embed_dim, height, width]
 
-        let conditional = Tensor::cat(vec![conditional, embed_map], 1); // [b, embed_dim * 2, ...]
+        let conditional = Tensor::cat(vec![conditional, embed_map], 1); // [b, embed_dim * 2 + embed_dim * 3, ...]
 
         // Message:  Dimensions are incompatible for matrix multiplication.
         let x = self.unet.forward(images, conditional); // TODO: как то изменеить unet((

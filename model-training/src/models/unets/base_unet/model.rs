@@ -8,6 +8,36 @@ use burn::{
 };
 use common::{CHANNELS, HEIGHT, WIDTH};
 
+/// Project conditional to bottleneck dimensions
+#[derive(Module, Debug)]
+struct ConditionalProject<B: Backend> {
+    conv: Conv2d<B>,
+    activation: Relu,
+}
+
+impl ConditionalProjectConfig {
+    pub fn init<B: Backend>(&self, device: &B::Device) -> ConditionalProject<B> {
+        ConditionalProject {
+            conv: Conv2dConfig::new([self.conditional_dim, self.hidden_dim * 4], [1, 1])
+                .init(device),
+            activation: Relu,
+        }
+    }
+}
+
+#[derive(Config, Debug)]
+struct ConditionalProjectConfig {
+    conditional_dim: usize,
+    hidden_dim: usize,
+}
+
+impl<B: Backend> ConditionalProject<B> {
+    pub fn forward(&self, x: Tensor<B, 4>) -> Tensor<B, 4> {
+        let x = self.conv.forward(x);
+        self.activation.forward(x)
+    }
+}
+
 // TODO: Разделить модель диффузии и её саму
 
 #[derive(Module, Debug)]
@@ -30,6 +60,9 @@ pub struct BaseUNet<B: Backend> {
     act5: Relu,
     conv6: Conv2d<B>,
     act6: Relu,
+
+    // Project conditional to bottleneck dimensions
+    cond_project: ConditionalProject<B>,
 
     up1: ConvTranspose2d<B>,
 
@@ -55,6 +88,7 @@ pub struct BaseUNetConfig {
     #[config(default = "16")]
     hidden_dim: usize,
 
+    #[config(default = "32")]
     conditional_dim: usize,
 }
 
@@ -92,6 +126,13 @@ impl BaseUNetConfig {
                 .init(device),
             act6: Relu,
 
+            // Project conditional to bottleneck dimensions
+            cond_project: ConditionalProjectConfig {
+                conditional_dim: self.conditional_dim,
+                hidden_dim: self.hidden_dim,
+            }
+            .init(device),
+
             up1: ConvTranspose2dConfig::new([self.hidden_dim * 4, self.hidden_dim * 2], [2, 2])
                 .with_stride([2, 2])
                 .init(device),
@@ -128,8 +169,6 @@ impl<B: Backend> BaseUNet<B> {
         images: Tensor<B, 4>,
         conditional: Tensor<B, 4>, // Дополнительная информация
     ) -> Tensor<B, 4> {
-        // TODO: Добавить обработку condinional
-
         // Encoder
         let x = self.conv1.forward(images);
         let x = self.act1.forward(x);
@@ -152,6 +191,12 @@ impl<B: Backend> BaseUNet<B> {
         let x = self.act5.forward(x);
         let x = self.conv6.forward(x);
         let x = self.act6.forward(x);
+
+        // Добавить conditional после bottleneck
+        // Project conditional to bottleneck spatial dimensions and add
+        let cond_proj = self.cond_project.forward(conditional);
+        let cond_proj = self.down2.forward(cond_proj); // Pool to match bottleneck size
+        let x = x + cond_proj;
 
         // Decoder
         let mut x = self.up1.forward(x);

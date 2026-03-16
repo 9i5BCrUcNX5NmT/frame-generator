@@ -5,7 +5,7 @@ use burn::{
     module::Module,
     prelude::Backend,
     record::{CompactRecorder, Recorder},
-    tensor::Tensor,
+    tensor::{Distribution, Tensor},
 };
 use common::*;
 use image::{DynamicImage, Rgba32FImage};
@@ -15,7 +15,45 @@ use preprocessor::{
     types::MyConstData,
 };
 
-use crate::{data::FrameBatcher, training::TrainingConfig};
+use crate::{data::FrameBatcher, models::model_v1::model::ModelV1, training::TrainingConfig};
+
+/// DDPM sampling loop with simplified Euler method
+fn ddpm_sampling_loop<B: Backend>(
+    model: &ModelV1<B>,
+    start_image: Tensor<B, 4>,
+    keys: Tensor<B, 2>,
+    mouse: Tensor<B, 3>,
+    num_steps: usize,
+) -> Tensor<B, 4> {
+    let device = start_image.device();
+
+    // Start from random noise
+    let mut x_t = start_image.random_like(Distribution::Normal(0.0, 1.0));
+
+    // DDPM reverse process (simplified Euler)
+    for step in (0..num_steps).rev() {
+        // Normalized timestep [0, 1]
+        let timestep = Tensor::<B, 1>::from_data(
+            burn::tensor::TensorData::new(vec![step as f32 / num_steps as f32], [1]),
+            &device,
+        );
+
+        // Model predicts noise
+        let predicted = model.forward(
+            x_t.clone(),
+            keys.clone(),
+            mouse.clone(),
+            x_t.clone(), // Using current x_t as conditional for now
+            timestep,
+        );
+
+        // Simplified Euler step: x_{t-1} = x_t - predicted * (1/timesteps)
+        let step_size = 1.0 / num_steps as f32;
+        x_t = x_t - predicted * step_size;
+    }
+
+    x_t
+}
 
 fn infer<B: Backend>(
     artifact_dir: &str,
@@ -33,17 +71,16 @@ fn infer<B: Backend>(
     let batcher = FrameBatcher::new(device.clone());
     let batch = batcher.batch(vec![item], &device);
 
-    let noise = batch
-        .images
-        .random_like(burn::tensor::Distribution::Normal(0.0, 1.0));
+    // DDPM sampling with 50 steps
+    const NUM_STEPS: usize = 50;
 
-    let output = model.forward(
+    let output = ddpm_sampling_loop(
+        &model,
         batch.images.clone(),
         batch.keys.clone(),
         batch.mouse.clone(),
-        noise,
+        NUM_STEPS,
     );
-    let output = batch.images * 0.9 + output * 0.1;
 
     let images = output
         .iter_dim(0)

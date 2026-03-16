@@ -1,7 +1,7 @@
 use burn::{
     nn::loss::{MseLoss, Reduction},
     prelude::Backend,
-    tensor::{backend::AutodiffBackend, Tensor},
+    tensor::{Tensor, backend::AutodiffBackend},
     train::{InferenceStep, RegressionOutput, TrainOutput, TrainStep},
 };
 
@@ -20,17 +20,27 @@ impl<B: Backend> ModelV1<B> {
         const P_STD: f32 = 1.2;
         const P_MEAN: f32 = -1.2;
 
+        let batch_size = inputs.dims()[0];
+        let device = inputs.device();
+
+        // Sample random timestep for each sample in batch
+        let random_timestep = Tensor::random(
+            [batch_size],
+            burn::tensor::Distribution::Uniform(0.0, 1.0),
+            &device,
+        );
+
         let random_normal = Tensor::random(
-            [inputs.dims()[0], 1, 1, 1],
+            [batch_size, 1, 1, 1],
             burn::tensor::Distribution::Normal(0.0, 1.0),
-            &inputs.device(),
+            &device,
         );
         let sigma = (random_normal * P_STD + P_MEAN).exp();
         let noise = inputs.random_like(burn::tensor::Distribution::Normal(0.0, 1.0)) * sigma;
 
         let noised_targets = targets.clone() + noise;
 
-        let output = self.forward(inputs, keys, mouse, noised_targets);
+        let output = self.forward(inputs, keys, mouse, noised_targets, random_timestep);
 
         let loss = MseLoss::new().forward(output.clone(), targets.clone(), Reduction::Auto);
 
