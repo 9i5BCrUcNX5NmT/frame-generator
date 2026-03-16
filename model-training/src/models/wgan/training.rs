@@ -1,8 +1,7 @@
 use burn::{
     nn::loss::{MseLoss, Reduction},
     prelude::Backend,
-    tensor::{Tensor, backend::AutodiffBackend},
-    train::{RegressionOutput, TrainOutput, TrainStep, ValidStep},
+    tensor::{backend::AutodiffBackend, Tensor},
 };
 
 use crate::data::FrameBatch;
@@ -16,7 +15,7 @@ impl<B: Backend> WganDecoder<B> {
         keys: Tensor<B, 2>,
         mouse: Tensor<B, 3>,
         targets: Tensor<B, 4>,
-    ) -> RegressionOutput<B> {
+    ) -> burn::train::RegressionOutput<B> {
         const P_STD: f32 = 1.2;
         const P_MEAN: f32 = -1.2;
 
@@ -39,24 +38,10 @@ impl<B: Backend> WganDecoder<B> {
         // let targets_2d = targets.flatten(1, 3);
         let targets_2d = inputs.flatten(1, 3);
 
-        RegressionOutput {
+        burn::train::RegressionOutput {
             loss,
             output: output_2d,
             targets: targets_2d,
         }
-    }
-}
-
-impl<B: AutodiffBackend> TrainStep<FrameBatch<B>, RegressionOutput<B>> for WganDecoder<B> {
-    fn step(&self, batch: FrameBatch<B>) -> TrainOutput<RegressionOutput<B>> {
-        let item = self.forward_generation(batch.images, batch.keys, batch.mouse, batch.targets);
-
-        TrainOutput::new(self, item.loss.backward(), item)
-    }
-}
-
-impl<B: Backend> ValidStep<FrameBatch<B>, RegressionOutput<B>> for WganDecoder<B> {
-    fn step(&self, batch: FrameBatch<B>) -> RegressionOutput<B> {
-        self.forward_generation(batch.images, batch.keys, batch.mouse, batch.targets)
     }
 }

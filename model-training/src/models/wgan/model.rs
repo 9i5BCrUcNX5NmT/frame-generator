@@ -10,7 +10,7 @@ use crate::models::embedders::{
 #[derive(Module, Debug)]
 pub struct LayerBlock<B: Backend> {
     fc: nn::Linear<B>,
-    bn: nn::BatchNorm<B, 0>,
+    bn: nn::BatchNorm<B>,
     leakyrelu: nn::LeakyRelu,
 }
 
@@ -19,7 +19,7 @@ impl<B: Backend> LayerBlock<B> {
         let fc = nn::LinearConfig::new(input, output)
             .with_bias(true)
             .init(device);
-        let bn: BatchNorm<B, 0> = nn::BatchNormConfig::new(output)
+        let bn: nn::BatchNorm<B> = nn::BatchNormConfig::new(output)
             .with_epsilon(0.8)
             .init(device);
         let leakyrelu = nn::LeakyReluConfig::new().with_negative_slope(0.2).init();
@@ -98,7 +98,7 @@ impl<B: Backend> WganDecoder<B> {
         // Получаем эмбеддинги
         let mouse_emb = self.mouse_embedder.forward(mouse); // [b, embed_dim]
         let keys_emb = self.keys_embedder.forward(keys); // [b, embed_dim]
-        // let timesteps_emb = self.timestep_embedder.forward(timesteps); // [b, embed_dim]
+                                                         // let timesteps_emb = self.timestep_embedder.forward(timesteps); // [b, embed_dim]
 
         // здесь для простоты просто суммируем
         // let embed = mouse_emb + keys_emb; // [b, embed_dim]

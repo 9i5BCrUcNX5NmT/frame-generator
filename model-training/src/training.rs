@@ -9,12 +9,12 @@ use burn::{
     prelude::*,
     record::CompactRecorder,
     tensor::backend::AutodiffBackend,
-    train::{LearnerBuilder, metric::LossMetric},
+    train::{metric::LossMetric, Learner, SupervisedTraining},
 };
 
 use preprocessor::{hdf5_processing::read_all_hdf5_files, types::MyConstData};
 
-#[derive(Config)]
+#[derive(Config, Debug)]
 pub(crate) struct TrainingConfig {
     pub model: ModelV1Config,
     pub optimizer: AdamConfig,
@@ -42,7 +42,7 @@ fn train<B: AutodiffBackend>(artifact_dir: &str, config: TrainingConfig, device:
         .save(format!("{artifact_dir}/config.json"))
         .expect("Config should be saved successfully");
 
-    B::seed(config.seed);
+    B::seed(&device, config.seed);
 
     let data_path = PathBuf::from_str("data").unwrap();
     let data_path = &data_path.join("hdf5_files");
@@ -73,22 +73,19 @@ fn train<B: AutodiffBackend>(artifact_dir: &str, config: TrainingConfig, device:
         .num_workers(config.num_workers)
         .build(dataset_test);
 
-    let learner = LearnerBuilder::new(artifact_dir)
-        .metric_train_numeric(LossMetric::new())
-        .metric_valid_numeric(LossMetric::new())
-        .with_file_checkpointer(CompactRecorder::new())
-        .devices(vec![device.clone()])
+    let training = SupervisedTraining::new(artifact_dir, dataloader_train, dataloader_test)
+        .metrics((LossMetric::new(), LossMetric::new()))
         .num_epochs(config.num_epochs)
-        .summary()
-        .build(
-            config.model.init::<B>(&device),
-            config.optimizer.init(),
-            config.learning_rate,
-        );
+        .summary();
 
-    let model_trained = learner.fit(dataloader_train, dataloader_test);
+    let model_trained = training.launch(Learner::new(
+        config.model.init::<B>(&device),
+        config.optimizer.init(),
+        config.learning_rate,
+    ));
 
     model_trained
+        .model
         .save_file(format!("{artifact_dir}/model"), &CompactRecorder::new())
         .expect("Trained model should be saved successfully");
 }
