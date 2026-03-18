@@ -98,7 +98,7 @@ impl<B: Backend> WganDecoder<B> {
         // Получаем эмбеддинги
         let mouse_emb = self.mouse_embedder.forward(mouse); // [b, embed_dim]
         let keys_emb = self.keys_embedder.forward(keys); // [b, embed_dim]
-                                                         // let timesteps_emb = self.timestep_embedder.forward(timesteps); // [b, embed_dim]
+        // let timesteps_emb = self.timestep_embedder.forward(timesteps); // [b, embed_dim]
 
         // здесь для простоты просто суммируем
         // let embed = mouse_emb + keys_emb; // [b, embed_dim]

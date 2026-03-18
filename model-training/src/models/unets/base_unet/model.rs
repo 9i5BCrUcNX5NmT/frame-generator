@@ -1,8 +1,8 @@
 use burn::{
     nn::{
-        Relu,
         conv::{Conv2d, Conv2dConfig, ConvTranspose2d, ConvTranspose2dConfig},
         pool::{AdaptiveAvgPool2d, AdaptiveAvgPool2dConfig, MaxPool2d, MaxPool2dConfig},
+        Relu,
     },
     prelude::*,
 };
@@ -88,7 +88,9 @@ pub struct BaseUNetConfig {
     #[config(default = "16")]
     hidden_dim: usize,
 
-    #[config(default = "32")]
+    // FIXED: conditional_dim should be embed_dim*2 + embed_dim*3 = 5*embed_dim = 500
+    // But we're passing CHANNELS(4) + embed_dim*3(300) = 304
+    #[config(default = "304")]
     conditional_dim: usize,
 }
 
@@ -195,7 +197,9 @@ impl<B: Backend> BaseUNet<B> {
         // Добавить conditional после bottleneck
         // Project conditional to bottleneck spatial dimensions and add
         let cond_proj = self.cond_project.forward(conditional);
-        let cond_proj = self.down2.forward(cond_proj); // Pool to match bottleneck size
+        // Pool twice to match bottleneck size (40x40 -> 20x20 -> 10x10)
+        let cond_proj = self.down1.forward(cond_proj);
+        let cond_proj = self.down2.forward(cond_proj);
         let x = x + cond_proj;
 
         // Decoder

@@ -1,149 +1,140 @@
-use std::{io, path::PathBuf, str::FromStr};
+use std::thread;
 
-use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
-use image::DynamicImage;
-use ratatui::{
-    DefaultTerminal, Frame,
-    buffer::Buffer,
-    layout::Rect,
-    style::Stylize,
-    symbols::border,
-    text::Line,
-    widgets::{Block, Borders, Widget},
-};
-use ratatui_image::{StatefulImage, picker::Picker, protocol::StatefulProtocol};
-use utils::get_first_file_in_directory;
+use iced::keyboard::{on_key_press, Key, Modifiers};
+use iced::widget::{button, column, container, mouse_area, row, text};
+use iced::{Alignment, Element, Length, Size, Subscription, Theme};
 
 mod utils;
 
-fn main() -> color_eyre::Result<()> {
-    color_eyre::install()?;
+#[derive(Debug, Clone)]
+enum Message {
+    Key(String),
+    Mouse(iced::Point),
+    GenerateImage,
+    ReloadImage,
+    ModelTraining,
+    Record,
+    StopRecord,
+    Postprocess,
+    CheckData,
+}
 
-    let mut terminal = ratatui::init();
+#[derive(Default)]
+pub struct State {
+    pub pressed_key: String,
+    pub mouse_position: iced::Point,
+    pub data_status: utils::DataStatus,
+    pub message_to_user: String,
+}
 
-    let image_path = match get_first_file_in_directory("data/images/resized_images") {
-        Ok(resized_dir) => match resized_dir {
-            Some(image_path) => image_path,
-            None => panic!("Отсутствуют файлы в resized_images"),
-        },
-        Err(_) => PathBuf::from_str("screenshots/image-1.png").unwrap(),
+fn main() -> iced::Result {
+    iced::application("Генерация |>_<|", update, view)
+        .window_size(Size::new(800.0, 600.0))
+        .theme(|_state| Theme::GruvboxDark)
+        .subscription(keyboard_subscription)
+        .run()
+}
+
+fn update(state: &mut State, message: Message) {
+    match message {
+        Message::Key(key) => state.pressed_key = key,
+        Message::Mouse(point) => state.mouse_position = point,
+        Message::GenerateImage => {
+            state.message_to_user = "GenerateImage clicked".to_string();
+        }
+        Message::ReloadImage => {
+            state.message_to_user = "ReloadImage clicked".to_string();
+        }
+        Message::ModelTraining => {
+            state.message_to_user = "Starting training...".to_string();
+            thread::spawn(|| model_training::training::run());
+        }
+        Message::Record => {
+            state.message_to_user = "Starting recording...".to_string();
+            thread::spawn(|| recorder::run());
+        }
+        Message::StopRecord => {
+            state.message_to_user = "Stop recording clicked".to_string();
+        }
+        Message::Postprocess => {
+            state.message_to_user = "Postprocessing...".to_string();
+            thread::spawn(|| {
+                preprocessor::process_my_images();
+                preprocessor::write_my_data();
+            });
+        }
+        Message::CheckData => {
+            utils::check_data(state);
+            state.message_to_user = "Data status updated".to_string();
+        }
+    };
+}
+
+fn view(state: &State) -> Element<'_, Message> {
+    let content = column![
+        // Top row: mouse, keys, status, log
+        row![
+            column![
+                text(format!("{:?}", state.mouse_position)),
+                row![text("Key: "), text(&state.pressed_key)],
+            ]
+            .spacing(10),
+            column![
+                text("Status"),
+                text(format!(
+                    "Преобразование кадров: {}",
+                    state.data_status.resized_images
+                )),
+                text(format!("hdf5 файлы: {}", state.data_status.hdf5_files)),
+                text(format!("Keys: {}", state.data_status.keys)),
+            ]
+            .spacing(10),
+            column![text("Log"), text(&state.message_to_user),].spacing(10)
+        ]
+        .spacing(10),
+        // Image placeholder
+        container(text("Изображение (нажмите Генерация)"))
+            .width(Length::Fill)
+            .height(Length::Fill),
+        // Buttons - matching original UI
+        column![
+            row![
+                button(text("Генерация")).on_press(Message::GenerateImage),
+                button(text("Сбросить изображение")).on_press(Message::ReloadImage),
+                button(text("Перезагрузить статус")).on_press(Message::CheckData),
+            ],
+            row![
+                button(text("Запись")).on_press(Message::Record),
+                button(text("Стоп запись")).on_press(Message::StopRecord),
+                button(text("Постобработка")).on_press(Message::Postprocess),
+            ],
+            row![button(text("Тренировка")).on_press(Message::ModelTraining),]
+        ]
+        .spacing(10)
+    ]
+    .align_x(Alignment::End)
+    .spacing(10)
+    .padding(10);
+
+    mouse_area(
+        container(content)
+            .center_x(Length::Fill)
+            .center_y(Length::Fill),
+    )
+    .on_move(|point| Message::Mouse(point))
+    .into()
+}
+
+fn capture_key(key: Key, _modifiers: Modifiers) -> Option<Message> {
+    let key = match key {
+        Key::Named(named) => utils::key_to_string(named),
+        Key::Character(character) => character.to_string(),
+        Key::Unidentified => "".to_string(),
     };
 
-    let first_image = image::open(image_path).unwrap();
-    let picker = Picker::from_query_stdio()
-        .expect("Поддержка протокола считывания размера шрифта из терминала(среды запуска)");
-    let image = picker.new_resize_protocol(first_image.clone());
-
-    let _app_result = App {
-        exit: false,
-        image,
-        picker,
-        dynamic_image: first_image,
-    }
-    .run(&mut terminal)?;
-
-    ratatui::restore();
-
-    Ok(())
+    Some(Message::Key(key))
 }
 
-pub struct App {
-    exit: bool,
-    image: StatefulProtocol,
-    picker: Picker,
-    dynamic_image: DynamicImage,
-}
-
-impl App {
-    /// runs the application's main loop until the user quits
-    pub fn run(&mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
-        while !self.exit {
-            terminal.draw(|frame| {
-                self.draw(frame);
-
-                let inner_area = Block::default()
-                    .borders(Borders::ALL)
-                    .title("image")
-                    .inner(frame.area());
-                frame.render_stateful_widget(StatefulImage::new(), inner_area, &mut self.image);
-            })?;
-            self.handle_events()?;
-        }
-        Ok(())
-    }
-
-    fn draw(&mut self, frame: &mut Frame) {
-        frame.render_widget(self, frame.area());
-    }
-
-    /// updates the application's state based on user input
-    fn handle_events(&mut self) -> io::Result<()> {
-        match event::read()? {
-            // it's important to check that the event is a key press event as
-            // crossterm also emits key release and repeat events on Windows.
-            Event::Key(key_event) if key_event.kind == KeyEventKind::Press => {
-                self.handle_key_event(key_event)
-            }
-            _ => {}
-        };
-        Ok(())
-    }
-
-    fn handle_key_event(&mut self, key_event: KeyEvent) {
-        match key_event.code {
-            KeyCode::Char('q') => self.exit(),
-            KeyCode::Char('i') => self.inference(),
-            KeyCode::Char('t') => self.train(),
-            KeyCode::Char('p') => self.preprocess(),
-            KeyCode::Char('r') => self.record(),
-            _ => {}
-        }
-    }
-
-    fn exit(&mut self) {
-        self.exit = true;
-    }
-
-    fn inference(&mut self) {
-        let generated_image =
-            model_training::inference::generate(&self.dynamic_image.clone(), vec![], vec![]); // TODO: считывание клавиш и мыши
-        self.image = self.picker.new_resize_protocol(generated_image);
-    }
-
-    fn train(&mut self) {
-        model_training::training::run();
-    }
-
-    fn preprocess(&mut self) {
-        preprocessor::process_my_images();
-        preprocessor::write_my_data();
-    }
-
-    fn record(&mut self) {
-        recorder::run();
-    }
-}
-
-impl Widget for &mut App {
-    fn render(self, area: Rect, buf: &mut Buffer) {
-        let title = Line::from(" Diffusion Learner ".bold());
-        let instructions = Line::from(vec![
-            " Train ".into(),
-            "<T>".blue().bold(),
-            " Inference ".into(),
-            "<I>".blue().bold(),
-            " Record ".into(),
-            "<R>".blue().bold(),
-            " Preprocess ".into(),
-            "<P>".blue().bold(),
-            " Quit ".into(),
-            "<Q> ".blue().bold(),
-        ]);
-        let block = Block::bordered()
-            .title(title.centered())
-            .title_bottom(instructions.centered())
-            .border_set(border::THICK);
-
-        block.render(area, buf);
-    }
+fn keyboard_subscription(_state: &State) -> Subscription<Message> {
+    on_key_press(capture_key)
 }

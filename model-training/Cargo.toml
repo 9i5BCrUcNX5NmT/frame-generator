@@ -12,7 +12,14 @@ common = { path = "../common" }
 preprocessor = { path = "../preprocessor" }
 # resnet-burn = { git = "https://github.com/tracel-ai/models", package = "resnet-burn", default-features = false }
 
+[dev-dependencies]
+# For testing only
+
 [features]
 default = []
 wgpu = ["burn/wgpu"]
 cuda = ["burn/cuda"]
+
+[[test]]
+name = "training_test"
+path = "tests/training_test.rs"

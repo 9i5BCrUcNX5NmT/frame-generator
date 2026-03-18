@@ -28,6 +28,9 @@ pub struct ConditionalBlockConfig {
 impl ConditionalBlockConfig {
     pub fn init<B: Backend>(&self, device: &B::Device) -> ConditionalBlock<B> {
         ConditionalBlock {
+            // FIX: LinearConfig::new(output, input)
+            // input: CHANNELS * HEIGHT * WIDTH = 4 * 40 * 40 = 6400
+            // output: same
             linear1: LinearConfig::new(self.condition_dim, self.condition_dim).init(device),
             activation: Relu,
             linear2: LinearConfig::new(self.condition_dim, self.condition_dim).init(device),
@@ -87,7 +90,7 @@ impl ModelV1Config {
 
             unet: BaseUNetConfig::new()
                 .with_embed_dim(self.embed_dim)
-                .with_conditional_dim(self.embed_dim * 2)
+                .with_conditional_dim(304) // CHANNELS(4) + embed_dim*3(300) = 304
                 .init(device),
         }
     }
@@ -119,20 +122,26 @@ impl<B: Backend> ModelV1<B> {
             2,
         ); // [b, 3, embed_dim]
 
-        let conditional = self.conditional.forward(next_noise);
+        // Build conditional for UNet: combine processed next_noise with embedded keys/mouse/time
+        // next_noise after conditional block: [batch, CHANNELS=4, 40, 40]
+        // embed_map after expand: [batch, embed_dim*3=300, 40, 40]
+        // Combined: [batch, 4+300=304, 40, 40]
+
+        // Process next_noise through conditional block
+        let conditional = self.conditional.forward(next_noise); // [batch, 4, 40, 40]
 
         let embed: Tensor<B, 2> = embed.flatten(1, 2); // [b, embed_dim * 3]
 
         let [_, embedding_dim] = embed.dims();
 
-        let embed_map = embed.unsqueeze_dims::<4>(&[2, 3]); // [embed_dim, 1, 1]
-        let embed_map = embed_map.expand([batch_size, embedding_dim, height, width]); // [embed_dim, height, width]
+        let embed_map = embed.unsqueeze_dims::<4>(&[2, 3]); // [batch, 300, 1, 1]
+        let embed_map = embed_map.expand([batch_size, embedding_dim, height, width]); // [batch, 300, 40, 40]
 
-        let conditional = Tensor::cat(vec![conditional, embed_map], 1); // [b, embed_dim * 2 + embed_dim * 3, ...]
+        let conditional = Tensor::cat(vec![conditional, embed_map], 1); // [batch, 304, 40, 40]
 
         // Message:  Dimensions are incompatible for matrix multiplication.
-        let x = self.unet.forward(images, conditional); // TODO: как то изменеить unet((
-        // let x = images.clone();
+        // FIX: Pass images to UNet (has 4 channels), conditional is used inside UNet
+        let x = self.unet.forward(images.clone(), conditional);
 
         let x = x.reshape([batch_size, channels, height, width]);
 

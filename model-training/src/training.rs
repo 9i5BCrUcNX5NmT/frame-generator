@@ -9,7 +9,7 @@ use burn::{
     prelude::*,
     record::CompactRecorder,
     tensor::backend::AutodiffBackend,
-    train::{metric::LossMetric, Learner, SupervisedTraining},
+    train::{Learner, SupervisedTraining, metric::LossMetric},
 };
 
 use preprocessor::{hdf5_processing::read_all_hdf5_files, types::MyConstData};

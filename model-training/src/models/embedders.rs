@@ -3,7 +3,7 @@ use burn::{
     module::Module,
     nn::{Linear, LinearConfig, Relu},
     prelude::Backend,
-    tensor::{Tensor, TensorData, activation::gelu},
+    tensor::{Tensor, TensorData},
 };
 use common::MOUSE_VECTOR_LENGTH;
 
@@ -23,21 +23,22 @@ pub struct MouseEmbedderConfig {
 impl MouseEmbedderConfig {
     pub fn init<B: Backend>(&self, device: &B::Device) -> MouseEmbedder<B> {
         MouseEmbedder {
+            // LinearConfig::new(input_features, output_features)
+            // input: 2 * MOUSE_VECTOR_LENGTH = 400, output: hidden_dim = 100
             linear1: LinearConfig::new(2 * MOUSE_VECTOR_LENGTH, self.hidden_dim).init(device),
             activation: Relu,
+            // input: hidden_dim = 100, output: embed_dim = 100
             linear2: LinearConfig::new(self.hidden_dim, self.embed_dim).init(device),
         }
     }
 }
 
 impl<B: Backend> MouseEmbedder<B> {
-    /// Normal method added to a struct.
     pub fn forward(&self, mouse: Tensor<B, 3>) -> Tensor<B, 2> {
-        let x = mouse.flatten(1, 2); // [n, 2, MOUSE_VECTOR_LENGTH] -> [n, MOUSE_VECTOR_LENGTH * 2]
-        let x = self.linear1.forward(x);
+        let x = mouse.flatten(1, 2); // [n, 2, 200] -> [n, 400]
+        let x = self.linear1.forward(x); // [n, 400] -> [n, 100]
         let x = self.activation.forward(x);
-        let x = self.linear2.forward(x);
-
+        let x = self.linear2.forward(x); // [n, 100] -> [n, 100]
         x
     }
 }
@@ -58,20 +59,21 @@ pub struct KeyboardEmbedderConfig {
 impl KeyboardEmbedderConfig {
     pub fn init<B: Backend>(&self, device: &B::Device) -> KeyboardEmbedder<B> {
         KeyboardEmbedder {
+            // LinearConfig::new(input_features, output_features)
+            // input: 108, output: hidden_dim = 100
             linear1: LinearConfig::new(108, self.hidden_dim).init(device),
             activation: Relu,
+            // input: hidden_dim = 100, output: embed_dim = 100
             linear2: LinearConfig::new(self.hidden_dim, self.embed_dim).init(device),
         }
     }
 }
 
 impl<B: Backend> KeyboardEmbedder<B> {
-    /// Normal method added to a struct.
     pub fn forward(&self, keys: Tensor<B, 2>) -> Tensor<B, 2> {
-        let x = self.linear1.forward(keys);
+        let x = self.linear1.forward(keys); // [n, 108] -> [n, 100]
         let x = self.activation.forward(x);
-        let x = self.linear2.forward(x);
-
+        let x = self.linear2.forward(x); // [n, 100] -> [n, 100]
         x
     }
 }
@@ -79,8 +81,8 @@ impl<B: Backend> KeyboardEmbedder<B> {
 /// Timestep embedder using sinusoidal positional encoding
 #[derive(Module, Debug)]
 pub struct TimestepEmbedder<B: Backend> {
-    linear1: Linear<B>,
-    linear2: Linear<B>,
+    // LinearConfig::new(input=embed_dim*4, output=embed_dim)
+    linear: Linear<B>,
 }
 
 #[derive(Config, Debug)]
@@ -90,33 +92,32 @@ pub struct TimestepEmbedderConfig {
 
 impl TimestepEmbedderConfig {
     pub fn init<B: Backend>(&self, device: &B::Device) -> TimestepEmbedder<B> {
+        let hidden_dim = self.embed_dim * 4;
         TimestepEmbedder {
-            linear1: LinearConfig::new(self.embed_dim, self.embed_dim * 4).init(device),
-            linear2: LinearConfig::new(self.embed_dim * 4, self.embed_dim).init(device),
+            // LinearConfig::new(input_features, output_features)
+            // input: hidden_dim = 400 (sinusoidal), output: embed_dim = 100
+            linear: LinearConfig::new(hidden_dim, self.embed_dim).init(device),
         }
     }
 }
 
 impl<B: Backend> TimestepEmbedder<B> {
-    /// Forward pass with sinusoidal embeddings
     pub fn forward(&self, timesteps: Tensor<B, 1>) -> Tensor<B, 2> {
         let device = timesteps.device();
         let [batch_size] = timesteps.dims();
 
-        // Create sinusoidal embeddings - simpler approach using expand
-        // We'll use a different approach: create [batch_size, embed_dim] tensor
-        let hidden_dim = self.linear1.weight.shape()[1];
+        // Derive dimensions from linear weight shape
+        // weight shape: [input=400, output=100]
+        let hidden_dim = self.linear.weight.shape().dims[0]; // input = 400
 
-        // Get timesteps as Vec<f32>
         let t_values: Vec<f32> = timesteps.to_data().to_vec::<f32>().unwrap();
 
-        // Create [batch_size, hidden_dim] tensor manually
+        // Create [batch_size, hidden_dim] sinusoidal encoding
         let mut data: Vec<f32> = Vec::with_capacity(batch_size * hidden_dim);
-
         for t in t_values.iter() {
             for j in 0..hidden_dim {
                 let freq = (j as f32 / 2.0_f32).exp() * std::f32::consts::PI;
-                let value = (t * freq).sin(); // Sinusoidal encoding
+                let value = (t * freq).sin();
                 data.push(value);
             }
         }
@@ -124,11 +125,7 @@ impl<B: Backend> TimestepEmbedder<B> {
         let tensor_data = TensorData::new(data, [batch_size, hidden_dim]);
         let x = Tensor::<B, 2>::from_data(tensor_data, &device);
 
-        // Pass through MLPs
-        let x = self.linear1.forward(x);
-        let x = gelu(x);
-        let x = self.linear2.forward(x);
-
-        x
+        // Linear forward: [batch, 400] -> [batch, 100]
+        self.linear.forward(x)
     }
 }
