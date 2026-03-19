@@ -1,5 +1,7 @@
 use std::{fs, path::PathBuf, str::FromStr};
 
+use image::DynamicImage;
+
 use crate::State;
 
 pub fn key_to_string(named: iced::keyboard::key::Named) -> String {
@@ -56,6 +58,40 @@ pub fn check_data(state: &mut State) {
     let images_path = data_path.join("images");
     state.data_status.images_from_frames = check_dir_not_empty(&images_path.join("raw"));
     state.data_status.resized_images = check_dir_not_empty(&images_path.join("resized_images"));
+}
+
+/// Convert a DynamicImage to an iced image Handle (RGBA8)
+pub fn dynamic_image_to_handle(img: &DynamicImage) -> iced::widget::image::Handle {
+    let rgba = img.to_rgba8();
+    let (w, h) = rgba.dimensions();
+    iced::widget::image::Handle::from_rgba(w, h, rgba.into_raw())
+}
+
+/// Load the first image from data/images/resized_images/ as the initial image
+pub fn load_initial_image() -> (Option<DynamicImage>, Option<iced::widget::image::Handle>) {
+    let image_dir = PathBuf::from_str("data/images/resized_images").unwrap();
+    match get_first_file_in_directory(&image_dir) {
+        Some(path) => match image::open(&path) {
+            Ok(img) => {
+                let handle = dynamic_image_to_handle(&img);
+                (Some(img), Some(handle))
+            }
+            Err(_) => (None, None),
+        },
+        None => (None, None),
+    }
+}
+
+/// Get the first file in a directory (sorted by name)
+fn get_first_file_in_directory(dir: &PathBuf) -> Option<PathBuf> {
+    let mut entries: Vec<PathBuf> = fs::read_dir(dir)
+        .ok()?
+        .filter_map(|e| e.ok())
+        .filter(|e| e.file_type().map(|ft| ft.is_file()).unwrap_or(false))
+        .map(|e| e.path())
+        .collect();
+    entries.sort();
+    entries.into_iter().next()
 }
 
 fn check_dir_not_empty(dir: &PathBuf) -> bool {

@@ -1,8 +1,9 @@
 use std::thread;
 
 use iced::keyboard::{on_key_press, Key, Modifiers};
-use iced::widget::{button, column, container, mouse_area, row, text};
+use iced::widget::{button, column, container, image as iced_image, mouse_area, row, text};
 use iced::{Alignment, Element, Length, Size, Subscription, Theme};
+use image::DynamicImage;
 
 mod utils;
 
@@ -19,12 +20,29 @@ enum Message {
     CheckData,
 }
 
-#[derive(Default)]
 pub struct State {
     pub pressed_key: String,
     pub mouse_position: iced::Point,
     pub data_status: utils::DataStatus,
     pub message_to_user: String,
+    pub current_image: Option<DynamicImage>,
+    pub initial_image: Option<DynamicImage>,
+    pub image_handle: Option<iced::widget::image::Handle>,
+}
+
+impl Default for State {
+    fn default() -> Self {
+        let (initial, handle) = utils::load_initial_image();
+        Self {
+            pressed_key: String::new(),
+            mouse_position: iced::Point::default(),
+            data_status: utils::DataStatus::default(),
+            message_to_user: String::new(),
+            current_image: initial.clone(),
+            initial_image: initial,
+            image_handle: handle,
+        }
+    }
 }
 
 fn main() -> iced::Result {
@@ -40,10 +58,23 @@ fn update(state: &mut State, message: Message) {
         Message::Key(key) => state.pressed_key = key,
         Message::Mouse(point) => state.mouse_position = point,
         Message::GenerateImage => {
-            state.message_to_user = "GenerateImage clicked".to_string();
+            if let Some(ref img) = state.current_image {
+                state.message_to_user = "Generating...".to_string();
+                let generated = model_training::inference::generate(img, vec![], vec![]);
+                state.image_handle = Some(utils::dynamic_image_to_handle(&generated));
+                state.current_image = Some(generated);
+                state.message_to_user = "Generation complete".to_string();
+            } else {
+                state.message_to_user =
+                    "No image loaded. Check data/images/resized_images/".to_string();
+            }
         }
         Message::ReloadImage => {
-            state.message_to_user = "ReloadImage clicked".to_string();
+            let (initial, handle) = utils::load_initial_image();
+            state.current_image = initial.clone();
+            state.initial_image = initial;
+            state.image_handle = handle;
+            state.message_to_user = "Image reset".to_string();
         }
         Message::ModelTraining => {
             state.message_to_user = "Starting training...".to_string();
@@ -92,10 +123,22 @@ fn view(state: &State) -> Element<'_, Message> {
             column![text("Log"), text(&state.message_to_user),].spacing(10)
         ]
         .spacing(10),
-        // Image placeholder
-        container(text("Изображение (нажмите Генерация)"))
+        // Image display
+        if let Some(ref handle) = state.image_handle {
+            container(
+                iced_image(handle.clone())
+                    .width(Length::Fill)
+                    .height(Length::Fill),
+            )
             .width(Length::Fill)
-            .height(Length::Fill),
+            .height(Length::Fill)
+        } else {
+            container(text(
+                "Нет изображения. Проверьте data/images/resized_images/",
+            ))
+            .width(Length::Fill)
+            .height(Length::Fill)
+        },
         // Buttons - matching original UI
         column![
             row![
