@@ -1,7 +1,7 @@
 use burn::{
     nn::loss::{MseLoss, Reduction},
     prelude::Backend,
-    tensor::{Tensor, backend::AutodiffBackend},
+    tensor::{backend::AutodiffBackend, Tensor},
     train::{InferenceStep, RegressionOutput, TrainOutput, TrainStep},
 };
 
@@ -35,7 +35,8 @@ impl<B: Backend> ModelV1<B> {
             burn::tensor::Distribution::Normal(0.0, 1.0),
             &device,
         );
-        let sigma = (random_normal * P_STD + P_MEAN).exp();
+        // Clamp sigma to prevent extreme noise values that cause NaN
+        let sigma = (random_normal * P_STD + P_MEAN).exp().clamp(0.001, 10.0);
         let noise = inputs.random_like(burn::tensor::Distribution::Normal(0.0, 1.0)) * sigma;
 
         let noised_targets = targets.clone() + noise;

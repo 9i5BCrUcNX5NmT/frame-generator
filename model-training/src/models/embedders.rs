@@ -109,16 +109,24 @@ impl<B: Backend> TimestepEmbedder<B> {
         // Derive dimensions from linear weight shape
         // weight shape: [input=400, output=100]
         let hidden_dim = self.linear.weight.shape().dims[0]; // input = 400
+        let half_dim = hidden_dim / 2;
 
         let t_values: Vec<f32> = timesteps.to_data().to_vec::<f32>().unwrap();
 
-        // Create [batch_size, hidden_dim] sinusoidal encoding
+        // Standard Transformer sinusoidal encoding (Vaswani et al.)
+        // freq_i = exp(-i * ln(10000) / half_dim), i = 0..half_dim
+        // encoding = [sin(t * freq_0), ..., sin(t * freq_n), cos(t * freq_0), ..., cos(t * freq_n)]
         let mut data: Vec<f32> = Vec::with_capacity(batch_size * hidden_dim);
         for t in t_values.iter() {
-            for j in 0..hidden_dim {
-                let freq = (j as f32 / 2.0_f32).exp() * std::f32::consts::PI;
-                let value = (t * freq).sin();
-                data.push(value);
+            // First half: sin components
+            for i in 0..half_dim {
+                let freq = (-(i as f32) * (10000_f32).ln() / half_dim as f32).exp();
+                data.push((t * freq).sin());
+            }
+            // Second half: cos components
+            for i in 0..half_dim {
+                let freq = (-(i as f32) * (10000_f32).ln() / half_dim as f32).exp();
+                data.push((t * freq).cos());
             }
         }
 

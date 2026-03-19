@@ -1,5 +1,6 @@
-//! Tests for model forward pass debugging
+//! Tests for model forward pass debugging and training
 //! Run: cargo test -p model-training --test training_test -- --nocapture
+//! Run with CUDA: cargo test -p model-training --features cuda --test training_test -- --nocapture
 
 use burn::backend::NdArray;
 use burn::nn::LinearConfig;
@@ -94,7 +95,7 @@ fn test_conditional_block() {
     type B = NdArray<f32>;
     let device = Default::default();
 
-    let block = ConditionalBlockConfig::new(CHANNELS * HEIGHT * WIDTH).init::<B>(&device);
+    let block = ConditionalBlockConfig::new(CHANNELS).init::<B>(&device);
 
     let x = Tensor::<B, 4>::from_data(
         TensorData::new(
@@ -156,4 +157,27 @@ fn test_model_forward() {
         [batch, CHANNELS, HEIGHT, WIDTH],
         "ModelV1 output should match input image shape"
     );
+}
+
+/// Full training run — reads real data from data/hdf5_files/ and trains.
+/// Uses CUDA backend when --features cuda, otherwise NdArray.
+///
+/// Run: cargo test -p model-training --features cuda --test training_test test_full_training -- --nocapture --ignored
+#[test]
+#[ignore] // Ignored by default — requires data files and GPU. Run explicitly.
+fn test_full_training() {
+    // cargo test -p model-training sets CWD to model-training/,
+    // but data lives at project root data/hdf5_files/.
+    // Change to project root so training::run() finds the data.
+    let manifest_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    let project_root = manifest_dir.parent().expect("project root");
+    std::env::set_current_dir(project_root).expect("failed to set CWD to project root");
+
+    // Verify data exists before starting
+    assert!(
+        std::path::Path::new("data/hdf5_files").exists(),
+        "Training data not found at data/hdf5_files/. Run preprocessing first."
+    );
+
+    model_training::training::run();
 }

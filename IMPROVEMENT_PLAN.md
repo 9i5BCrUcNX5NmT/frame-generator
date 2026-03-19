@@ -3,10 +3,13 @@
 ## Текущее состояние
 
 - **Размер кадра:** 40x40x4 (очень маленький — это плюс для обучения!)
-- **Embedders:** Есть мышь и клавиатура, но не работают
-- **TimestepEmbedder:** Закомментирован
-- **Модель:** U-Net автоэнкодер без диффузии
-- **Инференс:** Один проход без итераций
+- **Embedders:** Мышь, клавиатура и timestep — все подключены и работают
+- **TimestepEmbedder:** Реализован (sinusoidal encoding + linear projection)
+- **ModelV1:** U-Net с conditional injection в bottleneck + DDPM sampling
+- **ModelV2:** Полноценная latent diffusion — VAE (40x40x4 → 10x10x8) + LatentUNet + CrossAttention + DDIM sampling
+- **Noise Schedule:** Cosine schedule с DDIM step
+- **Инференс:** DDPM sampling (50 шагов) для V1, DDIM sampling в latent space для V2
+- **GPU:** CUDA backend поддерживается (`cargo run --features cuda`)
 
 ---
 
@@ -141,11 +144,11 @@ impl<B: Backend> ModelV1<B> {
 
 ### Чеклист Уровня 1:
 
-- [ ] Подключить conditional в BaseUNet
-- [ ] Раскомментировать/реализовать TimestepEmbedder
-- [ ] Добавить DDPM sampling loop в inference
-- [ ] Обновить ModelV1.forward() для timesteps
-- [ ] Обновить training forward для использования timesteps
+- [x] Подключить conditional в BaseUNet
+- [x] Раскомментировать/реализовать TimestepEmbedder
+- [x] Добавить DDPM sampling loop в inference
+- [x] Обновить ModelV1.forward() для timesteps
+- [x] Обновить training forward для использования timesteps
 
 ---
 
@@ -355,13 +358,13 @@ impl<B: AutodiffBackend> TrainStep for ModelV2<B> {
 
 ### Чеклист Уровня 2:
 
-- [ ] Реализовать NoiseSchedule (cosine)
-- [ ] Добавить VAE encoder/decoder
-- [ ] Реализовать CrossAttention block
-- [ ] Создать ModelV2 с правильным diffusion forward
-- [ ] Обновить training loop с MSE(noise, predicted_noise)
-- [ ] Реализовать DDIM sampling в inference
-- [ ] Обновить data loader для передачи действий
+- [x] Реализовать NoiseSchedule (cosine) — `models/noise_schedule.rs`
+- [x] Добавить VAE encoder/decoder — `models/vae/model.rs` (40x40x4 → 10x10x8)
+- [x] Реализовать CrossAttention block — `models/attention.rs` (multi-head, residual)
+- [x] Создать ModelV2 с правильным diffusion forward — `models/model_v2/model.rs`
+- [x] Обновить training loop с MSE(noise, predicted_noise) + KL loss — `models/model_v2/training.rs`
+- [x] Реализовать DDIM sampling в inference — встроен в `ModelV2::sample()`
+- [x] Data loader уже передаёт действия через FrameBatch
 
 ---
 
@@ -554,11 +557,11 @@ pub fn forward_multi_step(
 
 ## 📊 Итоговая таблица
 
-| Уровень | Сложность | Время | Основные изменения |
-|---------|-----------|-------|-------------------|
-| **1** | ⭐☆☆☆☆ | 2-4ч | Подключить conditional + timesteps + DDPM loop |
-| **2** | ⭐⭐⭐☆☆ | 1-2нед | VAE + CrossAttention + правильный diffusion loss |
-| **3** | ⭐⭐⭐⭐⭐ | 2-4мес | DiT + KV cache + multi-step + 2025-2026 practices |
+| Уровень | Сложность | Время | Основные изменения | Статус |
+|---------|-----------|-------|-------------------|--------|
+| **1** | ⭐☆☆☆☆ | 2-4ч | Подключить conditional + timesteps + DDPM loop | ✅ Готово |
+| **2** | ⭐⭐⭐☆☆ | 1-2нед | VAE + CrossAttention + правильный diffusion loss | ✅ Готово |
+| **3** | ⭐⭐⭐⭐⭐ | 2-4мес | DiT + KV cache + multi-step + 2025-2026 practices | ⬜ Следующий |
 
 ---
 
@@ -569,10 +572,10 @@ pub fn forward_multi_step(
    ↓           ↓           ↓
  2-4ч      1-2нед      2-4мес
    ↓           ↓           ↓
-"Работает"  "Хорошо"   "State-of-the-art"
+ ✅ Done    ✅ Done    ⬜ Next
 ```
 
-**Начинай с Уровня 1** — даже базовые исправления дадут огромное улучшение по сравнению с текущим состоянием. Каждый уровень строится на предыдущем.
+**Следующий шаг — Уровень 3.** Уровни 1 и 2 реализованы. Можно начинать обучение на ModelV2 и параллельно работать над Уровнем 3.
 
 ---
 

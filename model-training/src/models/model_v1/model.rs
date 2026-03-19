@@ -1,5 +1,8 @@
 use burn::{
-    nn::{Linear, LinearConfig, Relu},
+    nn::{
+        conv::{Conv2d, Conv2dConfig},
+        Relu,
+    },
     prelude::*,
 };
 
@@ -13,51 +16,43 @@ use crate::models::{
     unets::base_unet::model::{BaseUNet, BaseUNetConfig},
 };
 
+/// Lightweight conditional processing using Conv2d instead of huge Linear layers.
+/// Processes noisy input while preserving spatial structure.
+/// ~580 params instead of ~82M params.
 #[derive(Module, Debug)]
 pub struct ConditionalBlock<B: Backend> {
-    linear1: Linear<B>,
+    conv1: Conv2d<B>,
     activation: Relu,
-    linear2: Linear<B>,
+    conv2: Conv2d<B>,
 }
 
 #[derive(Config, Debug)]
 pub struct ConditionalBlockConfig {
-    condition_dim: usize,
+    channels: usize,
 }
 
 impl ConditionalBlockConfig {
     pub fn init<B: Backend>(&self, device: &B::Device) -> ConditionalBlock<B> {
         ConditionalBlock {
-            // FIX: LinearConfig::new(output, input)
-            // input: CHANNELS * HEIGHT * WIDTH = 4 * 40 * 40 = 6400
-            // output: same
-            linear1: LinearConfig::new(self.condition_dim, self.condition_dim).init(device),
+            conv1: Conv2dConfig::new([self.channels, self.channels], [3, 3])
+                .with_padding(nn::PaddingConfig2d::Same)
+                .init(device),
             activation: Relu,
-            linear2: LinearConfig::new(self.condition_dim, self.condition_dim).init(device),
+            conv2: Conv2dConfig::new([self.channels, self.channels], [3, 3])
+                .with_padding(nn::PaddingConfig2d::Same)
+                .init(device),
         }
     }
 }
 
 impl<B: Backend> ConditionalBlock<B> {
     pub fn forward(&self, x: Tensor<B, 4>) -> Tensor<B, 4> {
-        let shape = x.shape();
-        let x: Tensor<B, 2> = x.flatten(1, 3);
-
-        // panic!(
-        //     "{:?} {:?} {} {}",
-        //     shape,
-        //     x.dims(),
-        //     self.linear1,
-        //     CHANNELS * HEIGHT * WIDTH
-        // );
-
-        let x = self.linear1.forward(x); // TODO: ошибка здест ERROR
+        let residual = x.clone();
+        let x = self.conv1.forward(x);
         let x = self.activation.forward(x);
-        let x = self.linear2.forward(x);
-
-        let x = x.reshape(shape);
-
-        x
+        let x = self.conv2.forward(x);
+        // Residual connection for stable gradients
+        x + residual
     }
 }
 
@@ -86,7 +81,7 @@ impl ModelV1Config {
             keys_embedder: KeyboardEmbedderConfig::new(self.embed_dim, self.embed_dim).init(device),
             timestep_embedder: TimestepEmbedderConfig::new(self.embed_dim).init(device),
 
-            conditional: ConditionalBlockConfig::new(CHANNELS * HEIGHT * WIDTH).init(device),
+            conditional: ConditionalBlockConfig::new(CHANNELS).init(device),
 
             unet: BaseUNetConfig::new()
                 .with_embed_dim(self.embed_dim)
