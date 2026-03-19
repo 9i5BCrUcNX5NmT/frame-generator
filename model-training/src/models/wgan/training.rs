@@ -1,7 +1,7 @@
 use burn::{
     nn::loss::{MseLoss, Reduction},
     prelude::Backend,
-    tensor::{Tensor, backend::AutodiffBackend},
+    tensor::{backend::AutodiffBackend, Tensor},
 };
 
 use crate::data::FrameBatch;
